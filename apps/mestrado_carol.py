@@ -10,11 +10,12 @@ def _(mo):
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(mo):
     mo.md(
         r"""
     ## Estrutura
+    Olá. 
 
     Nessa página, estão os dados quantitativos da pesquisa de mestrado que foram produzidos e organizados pela Carolina Jansen e pelo Caio Lang.
 
@@ -581,9 +582,6 @@ def _(mo, name_dict, questions, wip_multiple_assertions, wip_other):
 def _(df_plot_variables, pct_4, plot_variables, px, question_to_plot):
     plot_variables(
         df_plot_variables,
-        # question_names=sorted(
-        #     set(wip_multiple_assertions)
-        # ),
         question_names=[question_to_plot.value],
         seggregate_favela=False,
         orientation="v",
