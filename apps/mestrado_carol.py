@@ -959,6 +959,8 @@ def _(
     md,
     pl,
 ):
+    OUTLIER_INCOME_LIMIT = 10_000
+
     def get_income_plot():
         _col_to_use = income_col_to_use.value
         # _col_to_use = "IncomePerCapita"
@@ -1051,8 +1053,14 @@ def _(
             .then(pl.lit("Não")),
         )
 
-        _first_data = _data.filter(pl.col.time == "FIRST")
-        _last_data = _data.filter(pl.col.time == "LAST")
+        _first_data = _data.filter(
+            (pl.col.time == "FIRST")
+            & (pl.col.Income <= OUTLIER_INCOME_LIMIT)
+        )
+        _last_data = _data.filter(
+            (pl.col.time == "LAST")
+            & (pl.col.Income <= OUTLIER_INCOME_LIMIT)
+        )
 
         _fig = go.Figure()
 
@@ -1239,13 +1247,32 @@ def _(
 
         # ----
 
+        _cols_gt = _col_to_use
+
         # return _fig, None
         if not _group_by_col:
-            return _fig, None
-
-        _cols_gt = _col_to_use
-        # if _col_to_use = "
-
+            _df_gt_first = pl.concat(
+                [
+                    (
+                        _first_data
+                        .select(_cols_gt)
+                        .describe()
+                        .with_columns(answer=pl.lit("Total"))
+                    )
+                ]
+            )
+    
+            _df_gt_last = pl.concat(
+                [
+                    (
+                        _last_data
+                        .select(_cols_gt)
+                        .describe()
+                        .with_columns(answer=pl.lit("Total"))
+                    )
+                ]
+            )
+        else:
         _df_gt_first = pl.concat(
             [
                 (
@@ -1280,10 +1307,9 @@ def _(
             ]
         )
 
-        _gt = [(
-            GT(
-                _df.filter(pl.col.statistic != "null_count")
-            )
+        _gt = [
+            (
+                GT(_df.filter(pl.col.statistic != "null_count"))
             .fmt_number(
                 columns=[_col_to_use],
                 # force_sign=True,
@@ -1310,20 +1336,32 @@ def _(
                 title=_title,
                 subtitle=md(
                     f"Descrição estatística <b>{income_group_by_cols.selected_key}</b>"
-                ),
+                    ) if _group_by_col else "Descrição estatística",
             )
             .cols_label(
-                **{_cols_gt:income_col_to_use.selected_key}
-                # num_family_members=md("Núm. de membros da família"),
+                    **{_cols_gt: income_col_to_use.selected_key}
             )
-            .tab_stub(rowname_col="statistic", groupname_col="answer")
-        ) for (_df, _title) in zip([_df_gt_first, _df_gt_last], ["Tempo inicial", "Tempo final"])]
+                .tab_stub(
+                    rowname_col="statistic",
+                    groupname_col="answer",
+                )
+            )
+            for (_df, _title) in zip(
+                [_df_gt_first, _df_gt_last], ["Tempo inicial", "Tempo final"]
+            )
+        ]
 
-        return _fig, _gt
+        return _fig, _gt, _first_data, _last_data
     return (get_income_plot,)
 
 
 @app.cell
+def _(income_group_by_cols):
+    income_group_by_cols.selected_key is None
+    return
+
+
+@app.cell(hide_code=True)
 def _(
     bin_size_slider,
     cb_first_time,
@@ -1361,6 +1399,17 @@ def _(
                 ],
                 justify="start",
             ),
+        ]
+    )
+    return
+
+
+@app.cell
+def _(get_income_plot, mo):
+    _fig, _gt, _df_first, _df_last = get_income_plot()
+
+    mo.vstack(
+        [
             _fig,
             mo.accordion({"Descrição estatística do agrupamento": mo.hstack(_gt, justify="space-around")}) if _gt else "",
         ]
