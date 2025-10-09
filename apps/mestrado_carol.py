@@ -942,7 +942,7 @@ def _():
     return (lighten_color,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(
     GT,
     bin_size_slider,
@@ -1248,7 +1248,7 @@ def _(
         # ----
 
         _cols_gt = _col_to_use
-
+    
         # return _fig, None
         if not _group_by_col:
             _df_gt_first = pl.concat(
@@ -1273,74 +1273,66 @@ def _(
                 ]
             )
         else:
-        _df_gt_first = pl.concat(
-            [
-                (
-                    _first_data.filter(True & (pl.col(_group_by_col) == "Sim"))
-                    .select(_cols_gt)
-                    .describe()
-                    .with_columns(answer=pl.lit("Sim"))
-                ),
-                (
-                    _first_data.filter(True & (pl.col(_group_by_col) == "Não"))
-                    .select(_cols_gt)
-                    .describe()
-                    .with_columns(answer=pl.lit("Não"))
-                ),
-            ]
-        )
-
-        _df_gt_last = pl.concat(
-            [
-                (
-                    _last_data.filter(True & (pl.col(_group_by_col) == "Sim"))
-                    .select(_cols_gt)
-                    .describe()
-                    .with_columns(answer=pl.lit("Sim"))
-                ),
-                (
-                    _last_data.filter(True & (pl.col(_group_by_col) == "Não"))
-                    .select(_cols_gt)
-                    .describe()
-                    .with_columns(answer=pl.lit("Não"))
-                ),
-            ]
-        )
+            _df_gt_first = pl.concat(
+                [
+                    (
+                        _first_data.filter(True & (pl.col(_group_by_col) == "Sim"))
+                        .select(_cols_gt)
+                        .describe()
+                        .with_columns(answer=pl.lit("Sim"))
+                    ),
+                    (
+                        _first_data.filter(True & (pl.col(_group_by_col) == "Não"))
+                        .select(_cols_gt)
+                        .describe()
+                        .with_columns(answer=pl.lit("Não"))
+                    ),
+                ]
+            )
+    
+            _df_gt_last = pl.concat(
+                [
+                    (
+                        _last_data.filter(True & (pl.col(_group_by_col) == "Sim"))
+                        .select(_cols_gt)
+                        .describe()
+                        .with_columns(answer=pl.lit("Sim"))
+                    ),
+                    (
+                        _last_data.filter(True & (pl.col(_group_by_col) == "Não"))
+                        .select(_cols_gt)
+                        .describe()
+                        .with_columns(answer=pl.lit("Não"))
+                    ),
+                ]
+            )
 
         _gt = [
             (
                 GT(_df.filter(pl.col.statistic != "null_count"))
-            .fmt_number(
-                columns=[_col_to_use],
-                # force_sign=True,
-                decimals=2,
-                # scale_by=100,
-                pattern="R$ {x}",
-                rows=list(range(1, 8)) + list(range(9, 16)),
-            )
-            # .fmt_number(
-            #     columns=["num_family_members"],
-            #     # force_sign=True,
-            #     decimals=2,
-            #     # scale_by=100,
-            #     pattern="{x}",
-            #     rows=list(range(1, 8)) + list(range(9, 16)),
-            # )
-            .fmt_number(
-                columns=[_cols_gt],
-                decimals=0,
-                pattern="{x}",
-                rows=[0, 8],
-            )
-            .tab_header(
-                title=_title,
-                subtitle=md(
-                    f"Descrição estatística <b>{income_group_by_cols.selected_key}</b>"
+                .fmt_number(
+                    columns=[_col_to_use],
+                    # force_sign=True,
+                    decimals=2,
+                    # scale_by=100,
+                    pattern="R$ {x}",
+                    rows=list(range(1, 8)) + list(range(9, 16)),
+                )
+                .fmt_number(
+                    columns=[_cols_gt],
+                    decimals=0,
+                    pattern="{x}",
+                    rows=[0, 8],
+                )
+                .tab_header(
+                    title=_title,
+                    subtitle=md(
+                        f"Descrição estatística <b>{income_group_by_cols.selected_key}</b>"
                     ) if _group_by_col else "Descrição estatística",
-            )
-            .cols_label(
+                )
+                .cols_label(
                     **{_cols_gt: income_col_to_use.selected_key}
-            )
+                )
                 .tab_stub(
                     rowname_col="statistic",
                     groupname_col="answer",
@@ -1355,26 +1347,17 @@ def _(
     return (get_income_plot,)
 
 
-@app.cell
-def _(income_group_by_cols):
-    income_group_by_cols.selected_key is None
-    return
-
-
 @app.cell(hide_code=True)
 def _(
     bin_size_slider,
     cb_first_time,
     cb_last_time,
-    get_income_plot,
     income_col_to_use,
     income_group_by_cols,
     max_x_slider,
     max_y_slider,
     mo,
 ):
-    _fig, _gt = get_income_plot()
-
     mo.vstack(
         [
             mo.hstack(
@@ -1411,7 +1394,15 @@ def _(get_income_plot, mo):
     mo.vstack(
         [
             _fig,
-            mo.accordion({"Descrição estatística do agrupamento": mo.hstack(_gt, justify="space-around")}) if _gt else "",
+            mo.accordion(
+                {
+                    "Descrição estatística do agrupamento": mo.hstack(
+                        _gt, justify="space-around"
+                    )
+                }
+            )
+            if _gt
+            else "",
         ]
     )
     return
@@ -1547,7 +1538,7 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(
     df_long_first,
     df_long_last,
@@ -1610,11 +1601,13 @@ def _(
             )
         if _dimension == "gender":
             _df_plot = _df_plot.filter(
-                pl.col.gender.is_in([
-                    "Mulher trans", # 2 pessoa
-                    "Homem trans", # 1 pessoa
-                    "Não binário",# 1 pessoa
-                ]).not_()
+                pl.col.gender.is_in(
+                    [
+                        "Mulher trans",  # 2 pessoa
+                        "Homem trans",  # 1 pessoa
+                        "Não binário",  # 1 pessoa
+                    ]
+                ).not_()
             )
 
         _fig = px.parallel_categories(
