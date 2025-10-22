@@ -5,7 +5,7 @@ app = marimo.App(width="columns")
 
 
 @app.cell
-def _(BathroomQualit_cols, get_df_long, mo, pl):
+def _(BathroomQualit_cols, add_new_questions, get_df_long, mo, pl):
     # Leitura do df original em CSV
     base_1 = str(
         mo.notebook_location()
@@ -24,8 +24,68 @@ def _(BathroomQualit_cols, get_df_long, mo, pl):
 
     # Passa o dataframe para o formato long (uma row por resposta, ao invés de uma row por família)
     df_long = get_df_long(df_original)
+
+    df_long = add_new_questions(df_long)
     df_long.write_csv(str(mo.notebook_location() / "public" / "df_long.csv"))
     return
+
+
+@app.cell
+def _(pl):
+    def add_new_questions(df_long):
+        _HealthGenKidsNames_df = (
+            df_long.filter(pl.col("question") == "HealthGenKidsNames")
+            .group_by("id_family_datalake", "time")
+            .agg(
+                pl.col("answer").alias("answer"),
+            )
+            .with_columns(
+                answer=pl.when(pl.col("answer") == ["NA"])
+                .then(pl.lit("Nenhuma doença"))
+                .otherwise(pl.col("answer").list.len()),
+                question=pl.lit("CountHealthGenKidsNames"),
+            )
+        )
+    
+        _HealthGenNames_df = (
+            df_long.filter(pl.col("question") == "HealthGenNames")
+            .group_by("id_family_datalake", "time")
+            .agg(
+                pl.col("answer").alias("answer"),
+            )
+            .with_columns(
+                answer=pl.when(pl.col("answer") == ["NA"])
+                .then(pl.lit("Nenhuma doença"))
+                .otherwise(pl.col("answer").list.len()),
+                question=pl.lit("CountHealthGenNames"),
+                # .alias("answer"),
+            )
+        )
+    
+        return pl.concat(
+            [
+                df_long,
+                _HealthGenNames_df.join(
+                    df_long, on=["id_family_datalake", "time"], how="right"
+                )
+                .select(df_long.columns)
+                .with_columns(
+                    column=pl.col.question,
+                    original_column=pl.col.question,
+                )
+                .unique(),
+                _HealthGenKidsNames_df.join(
+                    df_long, on=["id_family_datalake", "time"], how="right"
+                )
+                .select(df_long.columns)
+                .with_columns(
+                    column=pl.col.question,
+                    original_column=pl.col.question,
+                )
+                .unique(),
+            ]
+        )
+    return (add_new_questions,)
 
 
 @app.cell
