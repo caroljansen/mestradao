@@ -961,6 +961,7 @@ def _(
 ):
     OUTLIER_INCOME_LIMIT = 10_000
 
+
     def get_income_plot():
         _col_to_use = income_col_to_use.value
         # _col_to_use = "IncomePerCapita"
@@ -1054,12 +1055,10 @@ def _(
         )
 
         _first_data = _data.filter(
-            (pl.col.time == "FIRST")
-            & (pl.col.Income <= OUTLIER_INCOME_LIMIT)
+            (pl.col.time == "FIRST") & (pl.col.Income <= OUTLIER_INCOME_LIMIT)
         )
         _last_data = _data.filter(
-            (pl.col.time == "LAST")
-            & (pl.col.Income <= OUTLIER_INCOME_LIMIT)
+            (pl.col.time == "LAST") & (pl.col.Income <= OUTLIER_INCOME_LIMIT)
         )
 
         _fig = go.Figure()
@@ -1248,25 +1247,23 @@ def _(
         # ----
 
         _cols_gt = _col_to_use
-    
+
         # return _fig, None
         if not _group_by_col:
             _df_gt_first = pl.concat(
                 [
                     (
-                        _first_data
-                        .select(_cols_gt)
+                        _first_data.select(_cols_gt)
                         .describe()
                         .with_columns(answer=pl.lit("Total"))
                     )
                 ]
             )
-    
+
             _df_gt_last = pl.concat(
                 [
                     (
-                        _last_data
-                        .select(_cols_gt)
+                        _last_data.select(_cols_gt)
                         .describe()
                         .with_columns(answer=pl.lit("Total"))
                     )
@@ -1289,7 +1286,7 @@ def _(
                     ),
                 ]
             )
-    
+
             _df_gt_last = pl.concat(
                 [
                     (
@@ -1328,11 +1325,11 @@ def _(
                     title=_title,
                     subtitle=md(
                         f"Descrição estatística <b>{income_group_by_cols.selected_key}</b>"
-                    ) if _group_by_col else "Descrição estatística",
+                    )
+                    if _group_by_col
+                    else "Descrição estatística",
                 )
-                .cols_label(
-                    **{_cols_gt: income_col_to_use.selected_key}
-                )
+                .cols_label(**{_cols_gt: income_col_to_use.selected_key})
                 .tab_stub(
                     rowname_col="statistic",
                     groupname_col="answer",
@@ -2416,14 +2413,40 @@ def _():
             ],
         },
         "BathroomQualit": {
-            "map": {},
+            "map": {
+                "Nenhuma opção": [
+                    "Nenhuma opção",
+                    "0",
+                ],
+                "Parede de azulejo": [
+                    "Azulejo até a metade do banheiro",
+                    "Azulejo todo ruim",
+                ],
+                "Outros": [
+                    "A casa não possui chuveiro",
+                    "Está em obra",
+                    "Não tem chuveiro",
+                    "Banheiro de madeira",
+                    "Em obra",
+                    "ardosia piso",
+                    "Outro",
+                    "a privada não havia tampa. Moradores que tiveram a iniciativa e compraram, mas a imobiliária já ressarciu eles.",
+                    "Só a metade da parede.",
+                    "Piso e parede de cimento",
+                    "Tem pia.",
+                ],
+            },
             "order": [
-                "Box ou cortina que fecha o chuveiro",
+                "Nenhuma opção",
+                "Privada sem tampa",
+                "Privada com tampa",
+                "Chuveiro com água fria",
                 "Chuveiro com água quente",
+                "Box ou cortina que fecha o chuveiro",
                 "Parede de azulejo",
                 "Piso de azulejo",
                 "Porta externa que fecha o banheiro",
-                "Privada com tampa",
+                "Outros",
             ],
         },
         "HousingProblems": {

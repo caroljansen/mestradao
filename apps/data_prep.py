@@ -5,7 +5,7 @@ app = marimo.App(width="columns")
 
 
 @app.cell
-def _(get_df_long, mo, pl):
+def _(BathroomQualit_cols, get_df_long, mo, pl):
     # Leitura do df original em CSV
     base_1 = str(
         mo.notebook_location()
@@ -18,12 +18,29 @@ def _(get_df_long, mo, pl):
     df_original = pl.read_csv(base_1)
     # Join com a versão anterior dos dados por conta de colunas que desapareceram na nova versão
     df_old = pl.read_csv(base_2)
-    df_original = df_original.join(df_old, on=["id_family_datalake"])
+    df_original = df_original.join(df_old, on=["id_family_datalake"]).with_columns(
+        M_DC_BathroomQualit_T0=pl.concat_str(BathroomQualit_cols, separator=";")
+    )
 
     # Passa o dataframe para o formato long (uma row por resposta, ao invés de uma row por família)
     df_long = get_df_long(df_original)
     df_long.write_csv(str(mo.notebook_location() / "public" / "df_long.csv"))
     return
+
+
+@app.cell
+def _():
+    BathroomQualit_cols = [
+        "M_DC_BathroomQualit_1_T0",
+        "M_DC_BathroomQualit_2_T0",
+        "M_DC_BathroomQualit_3_T0",
+        "M_DC_BathroomQualit_4_T0",
+        "M_DC_BathroomQualit_5_T0",
+        "M_DC_BathroomQualit_6_T0",
+        "M_DC_BathroomQualit_7_T0",
+        "M_DC_BathroomQualit_8_T0",
+    ]
+    return (BathroomQualit_cols,)
 
 
 @app.cell
@@ -205,20 +222,7 @@ def get_col_dict():
             "M_DC_Eletricity_T0": "Eletricity_T0",
             "M_DC_Sewer_T0": "Sewer_T0",
             "M_DC_Bathroom_T0": "Bathroom_T0",
-            # ----------------
-            # O QUE USAR AQUI? -> Vamos consolidar BathroomQualit em cada tempo de uma forma que a Carol vai ver [NOTE]
-            # [NOTE] Variáveis que vamos consolidar contando o número de asserções de um subconjunto
-            # [TODO] Fazer para
-            # ---
-            # "M_DC_BathroomQualit_1_T0": "BathroomQualit_T0",
-            # "M_DC_BathroomQualit_2_T0": "BathroomQualit_T0",
-            # "M_DC_BathroomQualit_3_T0": "BathroomQualit_T0",
-            # "M_DC_BathroomQualit_4_T0": "BathroomQualit_T0",
-            # "M_DC_BathroomQualit_5_T0": "BathroomQualit_T0",
-            # "M_DC_BathroomQualit_6_T0": "BathroomQualit_T0",
-            # "M_DC_BathroomQualit_7_T0": "BathroomQualit_T0",
-            # "M_DC_BathroomQualit_8_T0": "BathroomQualit_T0",
-            # ---
+            "M_DC_BathroomQualit_T0": "BathroomQualit_T0",
             # MAIS MELHOR
             "CommFacilities_T0": "CommFacilities_T0",
             # ---
