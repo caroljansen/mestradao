@@ -74,12 +74,13 @@ def _(pl):
         )
 
         # Remove families X questions that only have one time difference between the first and last time
-        df_long_periods_filtered = df_long_periods.filter(
-            pl.col("time_last").cast(pl.Int8) - pl.col("time_first").cast(pl.Int8)
-            > 1
-        )
+        # df_long_periods_filtered = df_long_periods.filter(
+        #     pl.col("time_last").cast(pl.Int8) - pl.col("time_first").cast(pl.Int8)
+        #     > 1
+        # )
 
-        return df_long_periods_filtered
+        return df_long_periods
+        # return df_long_periods_filtered
     return (enrich_first_and_last_time,)
 
 
@@ -101,11 +102,35 @@ def _(BathroomQualit_cols, mo, pl):
     df_original = df_original.join(df_old, on=["id_family_datalake"]).with_columns(
         M_DC_BathroomQualit_T0=pl.concat_str(BathroomQualit_cols, separator=";")
     )
-    return (df_original,)
+    SINGLE_TIME_QUESTIONS = ["Gender", "HowManyPHHH", "Race"]
+    # SINGLE_TIME_QUESTIONS = ["Gender", "HowManyPHHH", "Race", "FamilyRelations"]
+    return SINGLE_TIME_QUESTIONS, df_original
+
+
+@app.cell
+def _(pl):
+
+    # PARA VALIDAR O ASSERTION_MAP
+    def check_answer_count(df_long):
+        return (
+            df_long.select("question", "answer")
+            .filter(
+                True
+                & (pl.col.question.str.contains("Average").not_())
+                & (pl.col.question.str.contains("Categoria").not_())
+                & (pl.col.question.is_in(["Income"]).not_())
+            )
+            .group_by("*")
+            .len()
+            .sort("question")
+        )
+
+    return
 
 
 @app.cell
 def _(
+    SINGLE_TIME_QUESTIONS,
     df_original,
     enrich_first_and_last_time,
     enrich_time,
@@ -113,12 +138,100 @@ def _(
     filter_first_and_last,
     fix_multiple_assertion_sep,
     fix_wide_cols,
+    list_to_str,
+    long_to_wide,
     map_and_join_answers,
     pl,
     rename_favela,
+    set_first_and_last,
     split_assertions,
     wide_to_long,
 ):
+    def remove_small_interval(df_long):
+        """
+        Remove perguntas de famílias caso a diferença entre FIRST e LAST seja menor ou igual a 1.
+        A exceção são perguntas feitas uma única vez ("Gender", "HowManyPHHH", "Race").
+        Ex.: Se uma família tem, para a pergunta "SchoolLast", respostas nos tempos 1 e 2, removemos essa pergunta dessa família.
+        """
+
+        return df_long.filter(
+            (
+                pl.col("time_last").cast(pl.Int8)
+                - pl.col("time_first").cast(pl.Int8)
+                > 1
+            )
+            | (pl.col.question.is_in(SINGLE_TIME_QUESTIONS))
+        )
+
+
+    _df = (
+        df_original.pipe(fix_wide_cols)
+        .pipe(wide_to_long)
+        .pipe(filter_cols_of_interest)
+        .pipe(enrich_time)
+        .pipe(fix_multiple_assertion_sep)
+        .pipe(rename_favela)
+        .pipe(split_assertions)
+        # .pipe(add_new_questions) # TODO: Mudar! Mudou o nome das colunas para Health e HealthKids
+        .pipe(enrich_first_and_last_time)
+        .pipe(remove_small_interval)
+        .pipe(filter_first_and_last)
+        .pipe(map_and_join_answers)
+    
+        # .pipe(check_answer_count) # AQUI PARA EXPORTAR AS RESPOSTAS E VALIDAR ASSERTION_MAP
+        .pipe(set_first_and_last)
+        
+        .filter(
+            True
+            # & (pl.col.id_family_datalake == "1..7.2021.338743R_311770")
+            # & (pl.col.question == "Garbage")
+            # & (pl.col.original_column == "CH_IB_Race_T0")
+            # & (pl.col.question == "FamilyRelations")
+            # & (pl.col.question == "Race")
+            # & (pl.col.question.is_in(["Gender", "Race"]))
+            # & (pl.col.question.is_in(["FamilyRelations", "DreamsKids"]))
+            # & (pl.col.question == "HealthKids")
+            # & (pl.col.answer == "Nenhuma opção")
+            # & (pl.col.question == "Gender_LAST")
+            # & (pl.col.question == "Gender_FIRST")
+            # & (pl.col.answer != "NA")
+            # & (pl.col.answer == "NA")
+            # & (pl.col.answer == "NA;NA;NA;NA;NA")
+        )
+        .pipe(long_to_wide)
+        .pipe(list_to_str)
+        .filter(
+            True
+            # & (pl.col.id_family_datalake == "1..7.2021.338743R_311770")
+            # & (pl.col.question == "Garbage")
+            # & (pl.col.question == "FamilyRelations_LAST")
+            # & (pl.col.question == "Documents_FIRST")
+            # & (pl.col.question.is_in(["Garbage_FIRST", "Garbage_LAST"]))
+        )
+    )
+
+
+    _idx_cols = ["id_family_datalake", "FavelaID"]
+    _var_cols = sorted(list(set(_df.columns) - set(_idx_cols)))
+    _final_cols = _idx_cols + _var_cols
+
+    (
+        _df
+            # .select(_final_cols)
+    )
+
+
+    # pl.Series(
+    #     _df
+    #         .select(pl.col.original_column).unique()
+    #     # .select(_final_cols)
+    #     # .select(_idx_cols + ["Race_FIRST"]) # TODO Fix! não retorna nada
+    # ).to_list()
+    return
+
+
+@app.cell
+def _(ASSERTION_MAP, SINGLE_TIME_QUESTIONS, pl):
     def set_first_and_last(df_long):
         _df = df_long.select(
             "id_family_datalake",
@@ -130,17 +243,25 @@ def _(
             "time_last",
         )
 
-        _df_first = _df.filter(pl.col.time == pl.col.time_first).with_columns(
+        _df_first = _df.filter(
+            (pl.col.time == pl.col.time_first)
+            & (pl.col.question.is_in(SINGLE_TIME_QUESTIONS).not_())
+        ).with_columns(
             question=pl.col.question + pl.lit("_FIRST")
         )
-        _df_last = _df.filter(pl.col.time == pl.col.time_last).with_columns(
+        _df_last = _df.filter(
+            (pl.col.time == pl.col.time_last)
+            & (pl.col.question.is_in(SINGLE_TIME_QUESTIONS).not_())
+        ).with_columns(
             question=pl.col.question + pl.lit("_LAST")
         )
-        _df = pl.concat([_df_first, _df_last])
+        _df_single_time = _df.filter((pl.col.question.is_in(SINGLE_TIME_QUESTIONS)))
+        _df = pl.concat([_df_first, _df_last, _df_single_time])
         return _df.select("id_family_datalake", "FavelaID", "question", "answer")
 
 
     def long_to_wide(df_long):
+        "Faz o pivot, passando de formato long (uma linha por resposta) para wide (uma linha por família)"
         return df_long.pivot(
             on="question",
             index=[
@@ -148,48 +269,22 @@ def _(
                 "FavelaID",
             ],
             values="answer",
-            aggregate_function=pl.element().implode() # TODO find a better option (only aggregate the questions that need it)
+            aggregate_function=pl.element().implode(),  # TODO find a better option (only aggregate the questions that need it)
         )
 
 
-    (
-        df_original.pipe(fix_wide_cols)
-        .pipe(wide_to_long)
-        .pipe(filter_cols_of_interest)
-        .pipe(enrich_time)
-        .pipe(fix_multiple_assertion_sep)
-        .pipe(rename_favela)
-        .pipe(split_assertions)  # Mantém os NAs
-        # .pipe(add_new_questions) # TODO: Mudar! Mudou o nome das colunas para Health e HealthKids
-        .pipe(enrich_first_and_last_time)
-        .pipe(filter_first_and_last)
-        .pipe(
-            map_and_join_answers
-        )  # DÚVIDA: Nas multi-asserção, como manter só duas respostas por pergunta? (a do primeiro tempo e a do último tempo) Possibilidade: [A;B;C]
-        .pipe(set_first_and_last)
-        # .pipe(add_profile_cols) # TODO: Add profile cols (race, gender, etc.) -> Race e Gender estão sendo tratados como perguntas normais (adaptar nos gráficos depois). Mas tem que adicionar as violencias. (Tem mesmo? Isso caiu...)
-        .filter(
-            True
-            # & (pl.col.id_family_datalake == "1..7.2021.338743R_311770")
-            # & (pl.col.id_family_datalake == "1.11.3.2022.305139R_1hKnzTpsoM389fC")
-            # & (pl.col.question == "Garbage")
-            # & (pl.col.question == "Documents_FIRST")
-            # & (pl.col.question == "Health")
-            # & (pl.col.question == "HealthKids")
-            # & (pl.col.answer == "Nenhuma opção")
-            # & (pl.col.question == "Gender")
-            # & (pl.col.answer != "NA")
-            # & (pl.col.answer == "NA")
-            # & (pl.col.answer == "NA;NA;NA;NA;NA")
-            # & (pl.col.answer.str.contains(","))
-        )
-        .pipe(long_to_wide) # TODO
-    )
-    return
+
+    def list_to_str(df_long):
+        "Usada depois do long_to_wide(), transforma as listas de respostas em strings únicas separadas por ';'."
+        return df_long.with_columns(
+            # Transforma listas vazias em ["NA"] antes de fazer o join dos elementos das listas.
+            pl.col(pl.List).map_elements(
+                lambda x: ["NA"] if len(x) == 0 else x,
+                return_dtype=pl.List(pl.Utf8),
+            )
+        ).with_columns(pl.col(pl.List).list.join(";"))
 
 
-@app.cell
-def _(ASSERTION_MAP, pl):
     def get_answer_map_per_question(question_name):
         assertion_map = ASSERTION_MAP
         new_to_list_of_old = assertion_map.get(question_name, {}).get("map", {})
@@ -200,37 +295,46 @@ def _(ASSERTION_MAP, pl):
         }
         return old_to_new
 
-    def map_and_join_answers(df_long):
 
+    def map_and_join_answers(df_long):
+        "Aplica o mapeamento de respostas de acordo com o ASSERTION_MAP, para ajustar respostas fora do padrão."
         # Your master dict structure (question -> answer mappings)
-        mappings = {k: get_answer_map_per_question(k) for k,v in ASSERTION_MAP.items()}
-    
+        mappings = {
+            k: get_answer_map_per_question(k) for k, v in ASSERTION_MAP.items()
+        }
+
         # Convert to a flat mapping dataframe
         mapping_rows = []
         for question, answer_map in mappings.items():
             for original, standardized in answer_map.items():
-                mapping_rows.append({
-                    "question": question,
-                    "original_answer": original,
-                    "standardized_answer": standardized
-                })
-    
+                mapping_rows.append(
+                    {
+                        "question": question,
+                        "original_answer": original,
+                        "standardized_answer": standardized,
+                    }
+                )
+
         mapping_df = pl.DataFrame(mapping_rows)
-    
+
         # Join with your long-format data
-        return df_long.join(
-            mapping_df,
-            left_on=["question", "answer"],
-            right_on=["question", "original_answer"],
-            how="left"
-        ).with_columns(
-            # Keep original answer for inspection
-            pl.col("answer").alias("original_answer")
-        ).with_columns(
-            # Use standardized answer if available, otherwise keep original
-            pl.coalesce("standardized_answer", "answer").alias("answer")
-        )#.drop("standardized_answer")
-    return (map_and_join_answers,)
+        return (
+            df_long.join(
+                mapping_df,
+                left_on=["question", "answer"],
+                right_on=["question", "original_answer"],
+                how="left",
+            )
+            .with_columns(
+                # Keep original answer for inspection
+                pl.col("answer").alias("original_answer")
+            )
+            .with_columns(
+                # Use standardized answer if available, otherwise keep original
+                pl.coalesce("standardized_answer", "answer").alias("answer")
+            )
+        ) 
+    return list_to_str, long_to_wide, map_and_join_answers, set_first_and_last
 
 
 @app.cell
@@ -318,8 +422,8 @@ def _(pl):
 
     def fix_multiple_assertion_sep(df_long):
         """
-        Padroniza o separador em questions com múltiplas asserções. Em algumas perguntas o separador é `,`.
-        Padroniza-se `;`, usado no restante das perguntas.
+        Padroniza o separador em questions com múltiplas asserções. Em algumas perguntas o separador é ','.
+        Padroniza-se ';', usado no restante das perguntas.
         """
 
         #     # Padronizar o separados em questions com múltiplas asserções
@@ -353,7 +457,7 @@ def _(pl):
 
 
     def split_assertions(df_long):
-        "Separa as asserções no caso de haver múltiplas asserções na resposta. Assume que o separador é `;`."
+        "Separa as asserções no caso de haver múltiplas asserções na resposta. Assume que o separador é ';'."
 
         _df_long = pl.concat(
             [
@@ -391,13 +495,14 @@ def _(pl):
 @app.cell
 def _(pl):
     def filter_first_and_last(df_long_enriched):
-        """Filters the dataframe to keep only the first and last time for each family/question.
+        """
+        Filtra o datafram mantendo apenas a primeira (FIRST) e última (LAST) resposta de cada família para cada pergunta.
 
         Args:
-            df_long_enriched (pl.DataFrame): The polars DataFrame enriched with columns 'time_first' and 'time_last'.
+            df_long_enriched (pl.DataFrame): Polars DataFrame com as colunas 'time_first' e 'time_last'.
 
         Returns:
-            pl.DataFrame: The filtered dataframe with only the first and last time for each family/question.
+            pl.DataFrame: Dataframe filtrado com a primeira e última resposta de cada família.
         """
         df_filtered = df_long_enriched.filter(
             (pl.col("time") == pl.col("time_first"))
@@ -563,15 +668,12 @@ def get_col_dict():
         "HousingProblems",
         "IncomeDesc",
         "JobSatisfaction",
+        "P_ATI_DreamsKids",
     ]
     complementary_vars = {
-        # Indica onde tinha dado e onde era NA
-        # "Ref_GenIndex_param_T1": "HealthGenNAs_T1", 
-        # "Ref_GenKidsIndex_param_T1": "HealthGenKidsNAs_T1",
-        # "Ref_GenIndex_param_T2": "HealthGenNAs_T2", 
-        # "Ref_GenKidsIndex_param_T2": "HealthGenKidsNAs_T2",
-        # "Ref_GenIndex_param_T3": "HealthGenNAs_T3", 
-        # "Ref_GenKidsIndex_param_T3": "HealthGenKidsNAs_T3",
+        "P_ATI_FamilyRelation_T1":"FamilyRelations_T1",
+        "P_ATI_FamilyRelation_T2":"FamilyRelations_T2",
+        "P_ATI_FamilyRelation_T3":"FamilyRelations_T3",
     }
     vars_T1_3_main = [
         var.split("_")[-1] if "_" in var else var for var in vars_T1_3
@@ -587,10 +689,14 @@ def get_col_dict():
         | dic_T1_3_list[2]
         | complementary_vars
     )
-
+    
     col_dict = (
         {
             "Categoria_IGF_T0": "CategoriaIGF_T0",
+            "P_DC_FamilyRelations_T0": "FamilyRelations_T0",
+            # TODO: Definir qual usar
+            # "P_DC_DreamsKids_T0": "DreamsKids_T0"
+            "E_DI_DreamsKids_T0": "DreamsKids_T0",
             "Categoria_Income_T0": "CategoriaIncome_T0",
             "Categoria_Environment_T0": "CategoriaEnvironment_T0",
             "Categoria_Housing_T0": "CategoriaHousing_T0",
@@ -918,6 +1024,14 @@ def _(pl):
 @app.cell
 def _():
     ASSERTION_MAP = {
+        "Gender": {"map": {"NA": ["Prefiro não responder", "Outro"]}},
+        "Race": {
+            "map": {
+                "Indígena": ["Indigena"],
+                "Amarela": ["Amarela (Asiática)"],
+                "NA": ["Não sabe/Não respondeu", "Não sabe", "NA"],
+            }
+        },
         "Access": {
             "map": {
                 "Existe algum membro que não tem acesso": [
@@ -1162,6 +1276,7 @@ def _():
             "map": {
                 "Não tem": [
                     "Nao Tem",
+                    "Outro",
                 ],
                 "Um banheiro compartilhado": [
                     "Um Banheiro Compartilhado",
@@ -1198,6 +1313,10 @@ def _():
         },
         "Documents": {
             "map": {
+                "Outro": [
+                    "1",
+                    "0",
+                ],
                 "Registro Nacional de Estrangeiro (RNE)": [
                     "Permisso de entrada, Autorização de residência, Protocolo de situação de Refugio, RNE, RME, Refugiado",
                     "RNE",
@@ -1208,7 +1327,10 @@ def _():
                 "RG": [
                     "Carteira de Identidade",
                 ],
-                "Cartão SUS": ["Cartão SUS", "SUS"],
+                "Cartão SUS": [
+                    "Cartão SUS",
+                    "SUS",
+                ],
                 "Certidão de nascimento": ["Certidão de Nascimento"],
                 "Não tenho nenhum documento": [
                     "Nenhuma opção",  # Respostas do tipo "NA;NA;NA;...;NA;NA;NA"
@@ -1236,7 +1358,7 @@ def _():
                     "Hospital Público",
                 ],
                 "Creche ou escola pública": [
-                    "Coleta de Lixo", # É isso mesmo???
+                    "Coleta de Lixo",  # É isso mesmo???
                     "Creche Publica",
                     "Creche Pública",
                     "Escola Publica",
@@ -1271,6 +1393,20 @@ def _():
         },
         "BathroomQualit": {
             "map": {
+                "Outro": [
+                    "Só a metade da parede.",
+                    "Não tem chuveiro",
+                    "Em obra",
+                    "A casa não possui chuveiro",
+                    "Azulejo todo ruim",
+                    "ardosia piso",
+                    "Está em obra",
+                    "Banheiro de madeira",
+                    "Azulejo até a metade do banheiro",
+                    "Piso e parede de cimento",
+                    "0",
+                    "Tem pia.",
+                ]
                 # "map": {
                 #     "Nenhuma opção": [
                 #         "Nenhuma opção",
@@ -1364,7 +1500,7 @@ def _():
                 "Recolhido pela prefeitura": [
                     "Recolhido pela Prefeitura",
                 ],
-                "Lixeira": [
+                "Lixeira na favela": [
                     "Cacamba",
                     "Caçamba mais proxima",
                     "Caçamba MB ais próxima",
@@ -1382,6 +1518,13 @@ def _():
                     "Levo até lixeira.",
                     "Lixeira",
                     "contenier",
+                ],
+                "Lixeira fora da favela": [
+                    "Cacamba mais próxima da favela",
+                    "Caçamba mais Px a favela",
+                    "Lixeira",
+                    "Caçamba mais próxima da favela",
+                    "Caçamba mais próxima",
                 ],
                 "Coleta seletiva": [
                     "Coleta Seletiva",
