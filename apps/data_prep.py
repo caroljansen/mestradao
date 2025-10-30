@@ -18,6 +18,7 @@ def _(mo):
         - ~~CountHealthGenNames e CountHealthGenKidsNames: Validar que estamos separando direito o que é NA e o que é Nenhuma doença~~
             - > Criamos `Health` e `HealthKids` que usa `Ref_GenIndex_param` e `Ref_GenKidsIndex_param` para mapear o que é NA de fato e o que é `Nenhuma doença`.
         - Renda per capita
+        - VALIDAR DREAMS KIDS
         - **Outras?**
     - Passar de volta para wide
     """
@@ -128,7 +129,7 @@ def _(pl):
 
 @app.cell
 def _(
-    SINGLE_TIME_QUESTIONS,
+    add_derivate_cols,
     df_original,
     enrich_first_and_last_time,
     enrich_time,
@@ -136,31 +137,16 @@ def _(
     filter_first_and_last,
     fix_multiple_assertion_sep,
     fix_wide_cols,
+    list_to_str,
+    long_to_wide,
     map_and_join_answers,
     mo,
-    pl,
+    remove_small_interval,
     rename_favela,
     set_first_and_last,
     split_assertions,
     wide_to_long,
 ):
-    def remove_small_interval(df_long):
-        """
-        Remove perguntas de famílias caso a diferença entre FIRST e LAST seja menor ou igual a 1.
-        A exceção são perguntas feitas uma única vez ("Gender", "HowManyPHHH", "Race").
-        Ex.: Se uma família tem, para a pergunta "SchoolLast", respostas nos tempos 1 e 2, removemos essa pergunta dessa família.
-        """
-
-        return df_long.filter(
-            (
-                pl.col("time_last").cast(pl.Int8)
-                - pl.col("time_first").cast(pl.Int8)
-                > 1
-            )
-            | (pl.col.question.is_in(SINGLE_TIME_QUESTIONS))
-        )
-
-
     _df = (
         df_original.pipe(fix_wide_cols)
         .pipe(wide_to_long)
@@ -179,17 +165,7 @@ def _(
             # & (pl.col.id_family_datalake == "1..7.2021.338743R_311770")
             # & (pl.col.question == "Garbage")
             # & (pl.col.original_column == "CH_IB_Race_T0")
-            # & (pl.col.question == "FamilyRelations")
-            # & (pl.col.question == "Race")
-            # & (pl.col.question.is_in(["Gender", "Race"]))
             # & (pl.col.question.is_in(["FamilyRelations", "DreamsKids"]))
-            # & (pl.col.question == "HealthKids")
-            # & (pl.col.answer == "Nenhuma opção")
-            # & (pl.col.question == "Gender_LAST")
-            # & (pl.col.question == "Gender_FIRST")
-            # & (pl.col.answer != "NA")
-            # & (pl.col.answer == "NA")
-            # & (pl.col.answer == "NA;NA;NA;NA;NA")
         )
         .pipe(set_first_and_last)
     )
@@ -206,13 +182,20 @@ def _(
             # & (pl.col.id_family_datalake == "1..7.2021.338743R_311770")
             # & (pl.col.question == "Garbage")
             # & (pl.col.question.is_in(["DreamsKids_FIRST", "DreamsKids_LAST"]))
-            # & (pl.col.question == "DreamsKids_FIRST")
-            # & (pl.col.question == "DreamsKids_LAST")
-            # & (pl.col.question == "Documents_FIRST")
+            # & (
+            #     pl.col.question.is_in(
+            #         [
+            #             "Income_FIRST",
+            #             "Income_LAST",
+            #             "HowManyPHHH",
+            #         ]
+            #     )
+            # )
             # & (pl.col.question.is_in(["Garbage_FIRST", "Garbage_LAST"]))
         )
-        # .pipe(long_to_wide)
-        # .pipe(list_to_str)
+        .pipe(long_to_wide)
+        .pipe(list_to_str)
+        .pipe(add_derivate_cols)
     )
 
 
@@ -221,11 +204,15 @@ def _(
     _final_cols = _idx_cols + _var_cols
 
     mo.vstack(
-        [_df, _log_df]
+        [
+            _df,
+            # _log_df,
+        ]
         # .select(_final_cols)
     )
 
-
+    df_final = _df
+    _df
     # pl.Series(
     #     _df
     #         .select(pl.col.original_column).unique()
@@ -237,6 +224,67 @@ def _(
 
 @app.cell
 def _(ASSERTION_MAP, SINGLE_TIME_QUESTIONS, pl):
+    # def add_derivate_cols(df_wide):
+    #     "Adiciona colunas derivadas de outras, como etapa final do processamento da base."
+
+    #     # _df = df_wide
+    #     _df = df_wide.with_columns(
+    #         IncomePerCapita_FIRST=pl.when(pl.col.Income_FIRST.str.contains("NA"))
+    #         .then(pl.lit("NA"))
+    #         .otherwise(
+    #             # pl.lit("NOT-NA")
+    #             pl.col.Income_FIRST.cast(pl.Float64)
+    #             / pl.col.HowManyPHHH.cast(pl.Int8)
+    #         )
+    #     )
+
+    #     return _df
+
+
+    def add_derivate_cols(df_wide):
+        "Adiciona colunas derivadas de outras, como etapa final do processamento da base."
+
+        # IncomePerCapita
+    
+        _df_first = df_wide.filter(
+            (pl.col.Income_FIRST != "NA") & (pl.col.HowManyPHHH != "NA")
+        ).with_columns(
+            IncomePerCapita_FIRST=pl.col.Income_FIRST.cast(pl.Float32)
+            / pl.col.HowManyPHHH.cast(pl.Int8)
+        ).select("id_family_datalake","IncomePerCapita_FIRST")
+        _df_last = df_wide.filter(
+            (pl.col.Income_LAST != "NA") & (pl.col.HowManyPHHH != "NA")
+        ).with_columns(
+            IncomePerCapita_LAST=pl.col.Income_LAST.cast(pl.Float32)
+            / pl.col.HowManyPHHH.cast(pl.Int8)
+        ).select("id_family_datalake","IncomePerCapita_LAST")
+
+        _df = (
+            df_wide
+                .join(_df_first, on="id_family_datalake", how="left")
+                .join(_df_last, on="id_family_datalake", how="left")
+        ).fill_null(pl.lit("NA"))
+
+        return _df
+
+
+    def remove_small_interval(df_long):
+        """
+        Remove perguntas de famílias caso a diferença entre FIRST e LAST seja menor ou igual a 1.
+        A exceção são perguntas feitas uma única vez ("Gender", "HowManyPHHH", "Race").
+        Ex.: Se uma família tem, para a pergunta "SchoolLast", respostas nos tempos 1 e 2, removemos essa pergunta dessa família.
+        """
+
+        return df_long.filter(
+            (
+                pl.col("time_last").cast(pl.Int8)
+                - pl.col("time_first").cast(pl.Int8)
+                > 1
+            )
+            | (pl.col.question.is_in(SINGLE_TIME_QUESTIONS))
+        )
+
+
     def set_first_and_last(df_long):
         _df = df_long.select(
             "id_family_datalake",
@@ -345,7 +393,14 @@ def _(ASSERTION_MAP, SINGLE_TIME_QUESTIONS, pl):
                 pl.coalesce("standardized_answer", "answer").alias("answer")
             )
         )
-    return map_and_join_answers, set_first_and_last
+    return (
+        add_derivate_cols,
+        list_to_str,
+        long_to_wide,
+        map_and_join_answers,
+        remove_small_interval,
+        set_first_and_last,
+    )
 
 
 @app.cell
