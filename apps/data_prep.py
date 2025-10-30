@@ -85,25 +85,23 @@ def _(pl):
 
 
 @app.cell
-def _(BathroomQualit_cols, mo, pl):
+def _(mo, pl):
     # Leitura do df original em CSV
     base_1 = str(
         mo.notebook_location()
         / "public"
-        # / "Carol_DataBaseFull_21052025_anonimizado.csv"
         / "Carol_DataBaseFull_26082025_anonimizado.csv"
     )
     base_2 = str(
         mo.notebook_location() / "public" / "Carol_DataBaseFull_Limpa.csv"
     )
     df_original = pl.read_csv(base_1)
-    # Join com a versão anterior dos dados por conta de colunas que desapareceram na nova versão
     df_old = pl.read_csv(base_2)
-    df_original = df_original.join(df_old, on=["id_family_datalake"]).with_columns(
-        M_DC_BathroomQualit_T0=pl.concat_str(BathroomQualit_cols, separator=";")
-    )
+
+    # Join com a versão anterior dos dados por conta de colunas que desapareceram na nova versão
+    df_original = df_original.join(df_old, on=["id_family_datalake"])
+
     SINGLE_TIME_QUESTIONS = ["Gender", "HowManyPHHH", "Race"]
-    # SINGLE_TIME_QUESTIONS = ["Gender", "HowManyPHHH", "Race", "FamilyRelations"]
     return SINGLE_TIME_QUESTIONS, df_original
 
 
@@ -138,9 +136,8 @@ def _(
     filter_first_and_last,
     fix_multiple_assertion_sep,
     fix_wide_cols,
-    list_to_str,
-    long_to_wide,
     map_and_join_answers,
+    mo,
     pl,
     rename_favela,
     set_first_and_last,
@@ -177,10 +174,6 @@ def _(
         .pipe(remove_small_interval)
         .pipe(filter_first_and_last)
         .pipe(map_and_join_answers)
-    
-        # .pipe(check_answer_count) # AQUI PARA EXPORTAR AS RESPOSTAS E VALIDAR ASSERTION_MAP
-        .pipe(set_first_and_last)
-        
         .filter(
             True
             # & (pl.col.id_family_datalake == "1..7.2021.338743R_311770")
@@ -198,16 +191,28 @@ def _(
             # & (pl.col.answer == "NA")
             # & (pl.col.answer == "NA;NA;NA;NA;NA")
         )
-        .pipe(long_to_wide)
-        .pipe(list_to_str)
-        .filter(
+        .pipe(set_first_and_last)
+    )
+
+    _log_df = _df.select(
+        "id_family_datalake", "question_name", "time_first", "time_last"
+    ).unique()
+
+    # _df = _df.pipe(check_answer_count) # AQUI PARA EXPORTAR AS RESPOSTAS E VALIDAR ASSERTION_MAP
+
+    _df = (
+        _df.filter(
             True
             # & (pl.col.id_family_datalake == "1..7.2021.338743R_311770")
             # & (pl.col.question == "Garbage")
-            # & (pl.col.question == "FamilyRelations_LAST")
+            # & (pl.col.question.is_in(["DreamsKids_FIRST", "DreamsKids_LAST"]))
+            # & (pl.col.question == "DreamsKids_FIRST")
+            # & (pl.col.question == "DreamsKids_LAST")
             # & (pl.col.question == "Documents_FIRST")
             # & (pl.col.question.is_in(["Garbage_FIRST", "Garbage_LAST"]))
         )
+        # .pipe(long_to_wide)
+        # .pipe(list_to_str)
     )
 
 
@@ -215,9 +220,9 @@ def _(
     _var_cols = sorted(list(set(_df.columns) - set(_idx_cols)))
     _final_cols = _idx_cols + _var_cols
 
-    (
-        _df
-            # .select(_final_cols)
+    mo.vstack(
+        [_df, _log_df]
+        # .select(_final_cols)
     )
 
 
@@ -243,21 +248,28 @@ def _(ASSERTION_MAP, SINGLE_TIME_QUESTIONS, pl):
             "time_last",
         )
 
-        _df_first = _df.filter(
-            (pl.col.time == pl.col.time_first)
-            & (pl.col.question.is_in(SINGLE_TIME_QUESTIONS).not_())
-        ).with_columns(
-            question=pl.col.question + pl.lit("_FIRST")
+        _df_first = (
+            _df.filter(
+                (pl.col.time == pl.col.time_first)
+                & (pl.col.question.is_in(SINGLE_TIME_QUESTIONS).not_())
+            )
+            .with_columns(question_name=pl.col.question)
+            .with_columns(question=pl.col.question + pl.lit("_FIRST"))
         )
-        _df_last = _df.filter(
-            (pl.col.time == pl.col.time_last)
-            & (pl.col.question.is_in(SINGLE_TIME_QUESTIONS).not_())
-        ).with_columns(
-            question=pl.col.question + pl.lit("_LAST")
+        _df_last = (
+            _df.filter(
+                (pl.col.time == pl.col.time_last)
+                & (pl.col.question.is_in(SINGLE_TIME_QUESTIONS).not_())
+            )
+            .with_columns(question_name=pl.col.question)
+            .with_columns(question=pl.col.question + pl.lit("_LAST"))
         )
-        _df_single_time = _df.filter((pl.col.question.is_in(SINGLE_TIME_QUESTIONS)))
+        _df_single_time = _df.filter(
+            (pl.col.question.is_in(SINGLE_TIME_QUESTIONS))
+        ).with_columns(question_name=pl.col.question)
         _df = pl.concat([_df_first, _df_last, _df_single_time])
-        return _df.select("id_family_datalake", "FavelaID", "question", "answer")
+        return _df
+        # return _df.select("id_family_datalake", "FavelaID", "question", "answer")
 
 
     def long_to_wide(df_long):
@@ -271,7 +283,6 @@ def _(ASSERTION_MAP, SINGLE_TIME_QUESTIONS, pl):
             values="answer",
             aggregate_function=pl.element().implode(),  # TODO find a better option (only aggregate the questions that need it)
         )
-
 
 
     def list_to_str(df_long):
@@ -333,8 +344,8 @@ def _(ASSERTION_MAP, SINGLE_TIME_QUESTIONS, pl):
                 # Use standardized answer if available, otherwise keep original
                 pl.coalesce("standardized_answer", "answer").alias("answer")
             )
-        ) 
-    return list_to_str, long_to_wide, map_and_join_answers, set_first_and_last
+        )
+    return map_and_join_answers, set_first_and_last
 
 
 @app.cell
@@ -342,41 +353,67 @@ def _(pl):
     def fix_wide_cols(df_wide):
         "Conserta problemas de coluna que precisam ser feitos antes de passar para long."
 
-        _df = df_wide.with_columns(
-            # HealthGenNames
-            pl.when(pl.col.Ref_GenIndex_param_T0 == "sem dado")
-            .then(pl.lit("Nenhuma opção"))
-            .otherwise(pl.col.HealthGenNames_T0)
-            .alias("Health_T0"),
-            pl.when(pl.col.Ref_GenIndex_param_T1 == "sem dado")
-            .then(pl.lit("Nenhuma opção"))
-            .otherwise(pl.col.HealthGenNames_T1)
-            .alias("Health_T1"),
-            pl.when(pl.col.Ref_GenIndex_param_T2 == "sem dado")
-            .then(pl.lit("Nenhuma opção"))
-            .otherwise(pl.col.HealthGenNames_T2)
-            .alias("Health_T2"),
-            pl.when(pl.col.Ref_GenIndex_param_T3 == "sem dado")
-            .then(pl.lit("Nenhuma opção"))
-            .otherwise(pl.col.HealthGenNames_T3)
-            .alias("Health_T3"),
-            # HealthGenKidsNames
-            pl.when(pl.col.Ref_GenKidsIndex_param_T0 == "sem dado")
-            .then(pl.lit("Nenhuma opção"))
-            .otherwise(pl.col.HealthGenKidsNames_T0)
-            .alias("HealthKids_T0"),
-            pl.when(pl.col.Ref_GenKidsIndex_param_T1 == "sem dado")
-            .then(pl.lit("Nenhuma opção"))
-            .otherwise(pl.col.HealthGenKidsNames_T1)
-            .alias("HealthKids_T1"),
-            pl.when(pl.col.Ref_GenKidsIndex_param_T2 == "sem dado")
-            .then(pl.lit("Nenhuma opção"))
-            .otherwise(pl.col.HealthGenKidsNames_T2)
-            .alias("HealthKids_T2"),
-            pl.when(pl.col.Ref_GenKidsIndex_param_T3 == "sem dado")
-            .then(pl.lit("Nenhuma opção"))
-            .otherwise(pl.col.HealthGenKidsNames_T3)
-            .alias("HealthKids_T3"),
+        _BathroomQualit_cols = [
+            "M_DC_BathroomQualit_1_T0",
+            "M_DC_BathroomQualit_2_T0",
+            "M_DC_BathroomQualit_3_T0",
+            "M_DC_BathroomQualit_4_T0",
+            "M_DC_BathroomQualit_5_T0",
+            "M_DC_BathroomQualit_6_T0",
+            "M_DC_BathroomQualit_7_T0",
+            "M_DC_BathroomQualit_8_T0",
+        ]
+        _df = (
+            df_wide
+            # [M_DC_BathroomQualit_..._T0] -> M_DC_BathroomQualit_T0
+            .with_columns(
+                M_DC_BathroomQualit_T0=pl.concat_str(
+                    _BathroomQualit_cols, separator=";"
+                )
+            )
+            # Merge E_DI_DreamsKids_T0 e E_DI_DreamsKids_T0 -> DreamsKids_T0
+            .with_columns(
+                DreamsKids_T0=pl.when(pl.col.E_DI_DreamsKids_T0 != "NA")
+                .then(pl.col.E_DI_DreamsKids_T0)
+                .otherwise(pl.col.P_DC_DreamsKids_T0)
+            )
+            # HealthGenNames e HealthGenKidsNames -> Health e HealthKids
+            .with_columns(
+                # HealthGenNames
+                pl.when(pl.col.Ref_GenIndex_param_T0 == "sem dado")
+                .then(pl.lit("Nenhuma opção"))
+                .otherwise(pl.col.HealthGenNames_T0)
+                .alias("Health_T0"),
+                pl.when(pl.col.Ref_GenIndex_param_T1 == "sem dado")
+                .then(pl.lit("Nenhuma opção"))
+                .otherwise(pl.col.HealthGenNames_T1)
+                .alias("Health_T1"),
+                pl.when(pl.col.Ref_GenIndex_param_T2 == "sem dado")
+                .then(pl.lit("Nenhuma opção"))
+                .otherwise(pl.col.HealthGenNames_T2)
+                .alias("Health_T2"),
+                pl.when(pl.col.Ref_GenIndex_param_T3 == "sem dado")
+                .then(pl.lit("Nenhuma opção"))
+                .otherwise(pl.col.HealthGenNames_T3)
+                .alias("Health_T3"),
+                # HealthGenKidsNames
+                pl.when(pl.col.Ref_GenKidsIndex_param_T0 == "sem dado")
+                .then(pl.lit("Nenhuma opção"))
+                .otherwise(pl.col.HealthGenKidsNames_T0)
+                .alias("HealthKids_T0"),
+                pl.when(pl.col.Ref_GenKidsIndex_param_T1 == "sem dado")
+                .then(pl.lit("Nenhuma opção"))
+                .otherwise(pl.col.HealthGenKidsNames_T1)
+                .alias("HealthKids_T1"),
+                pl.when(pl.col.Ref_GenKidsIndex_param_T2 == "sem dado")
+                .then(pl.lit("Nenhuma opção"))
+                .otherwise(pl.col.HealthGenKidsNames_T2)
+                .alias("HealthKids_T2"),
+                pl.when(pl.col.Ref_GenKidsIndex_param_T3 == "sem dado")
+                .then(pl.lit("Nenhuma opção"))
+                .otherwise(pl.col.HealthGenKidsNames_T3)
+                .alias("HealthKids_T3"),
+            )
         )
 
         return _df
@@ -585,21 +622,6 @@ def _(pl):
 
 @app.cell
 def _():
-    BathroomQualit_cols = [
-        "M_DC_BathroomQualit_1_T0",
-        "M_DC_BathroomQualit_2_T0",
-        "M_DC_BathroomQualit_3_T0",
-        "M_DC_BathroomQualit_4_T0",
-        "M_DC_BathroomQualit_5_T0",
-        "M_DC_BathroomQualit_6_T0",
-        "M_DC_BathroomQualit_7_T0",
-        "M_DC_BathroomQualit_8_T0",
-    ]
-    return (BathroomQualit_cols,)
-
-
-@app.cell
-def _():
     import polars as pl
     import marimo as mo
     return mo, pl
@@ -696,7 +718,8 @@ def get_col_dict():
             "P_DC_FamilyRelations_T0": "FamilyRelations_T0",
             # TODO: Definir qual usar
             # "P_DC_DreamsKids_T0": "DreamsKids_T0"
-            "E_DI_DreamsKids_T0": "DreamsKids_T0",
+            # "E_DI_DreamsKids_T0": "DreamsKids_T0",
+            "DreamsKids_T0": "DreamsKids_T0",
             "Categoria_Income_T0": "CategoriaIncome_T0",
             "Categoria_Environment_T0": "CategoriaEnvironment_T0",
             "Categoria_Housing_T0": "CategoriaHousing_T0",
@@ -1107,14 +1130,17 @@ def _():
         },
         "DreamsKids": {
             "map": {
-                "Não": [
+                "Não sei" : [
                     "(espontâneo) Não sei",
                     "Nao Sei",
+                ],
+                "Não": [
                     "Nao",
+                    "Não",
                 ],
                 "Sim": [
-                    "Sim, o que?",
                     "Sim o que?",
+                    "Sim, o que?",
                 ],
             },
         },
@@ -1404,6 +1430,7 @@ def _():
                     "Banheiro de madeira",
                     "Azulejo até a metade do banheiro",
                     "Piso e parede de cimento",
+                    "a privada não havia tampa. Moradores que tiveram a iniciativa e compraram, mas a imobiliária já ressarciu eles.",
                     "0",
                     "Tem pia.",
                 ]
