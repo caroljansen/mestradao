@@ -942,7 +942,7 @@ def _():
     return (lighten_color,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(
     GT,
     bin_size_slider,
@@ -959,6 +959,9 @@ def _(
     md,
     pl,
 ):
+    OUTLIER_INCOME_LIMIT = 10_000
+
+
     def get_income_plot():
         _col_to_use = income_col_to_use.value
         # _col_to_use = "IncomePerCapita"
@@ -1051,8 +1054,12 @@ def _(
             .then(pl.lit("Não")),
         )
 
-        _first_data = _data.filter(pl.col.time == "FIRST")
-        _last_data = _data.filter(pl.col.time == "LAST")
+        _first_data = _data.filter(
+            (pl.col.time == "FIRST") & (pl.col.Income <= OUTLIER_INCOME_LIMIT)
+        )
+        _last_data = _data.filter(
+            (pl.col.time == "LAST") & (pl.col.Income <= OUTLIER_INCOME_LIMIT)
+        )
 
         _fig = go.Figure()
 
@@ -1239,104 +1246,115 @@ def _(
 
         # ----
 
+        _cols_gt = _col_to_use
+
         # return _fig, None
         if not _group_by_col:
-            return _fig, None
-
-        _cols_gt = _col_to_use
-        # if _col_to_use = "
-
-        _df_gt_first = pl.concat(
-            [
-                (
-                    _first_data.filter(True & (pl.col(_group_by_col) == "Sim"))
-                    .select(_cols_gt)
-                    .describe()
-                    .with_columns(answer=pl.lit("Sim"))
-                ),
-                (
-                    _first_data.filter(True & (pl.col(_group_by_col) == "Não"))
-                    .select(_cols_gt)
-                    .describe()
-                    .with_columns(answer=pl.lit("Não"))
-                ),
-            ]
-        )
-
-        _df_gt_last = pl.concat(
-            [
-                (
-                    _last_data.filter(True & (pl.col(_group_by_col) == "Sim"))
-                    .select(_cols_gt)
-                    .describe()
-                    .with_columns(answer=pl.lit("Sim"))
-                ),
-                (
-                    _last_data.filter(True & (pl.col(_group_by_col) == "Não"))
-                    .select(_cols_gt)
-                    .describe()
-                    .with_columns(answer=pl.lit("Não"))
-                ),
-            ]
-        )
-
-        _gt = [(
-            GT(
-                _df.filter(pl.col.statistic != "null_count")
+            _df_gt_first = pl.concat(
+                [
+                    (
+                        _first_data.select(_cols_gt)
+                        .describe()
+                        .with_columns(answer=pl.lit("Total"))
+                    )
+                ]
             )
-            .fmt_number(
-                columns=[_col_to_use],
-                # force_sign=True,
-                decimals=2,
-                # scale_by=100,
-                pattern="R$ {x}",
-                rows=list(range(1, 8)) + list(range(9, 16)),
-            )
-            # .fmt_number(
-            #     columns=["num_family_members"],
-            #     # force_sign=True,
-            #     decimals=2,
-            #     # scale_by=100,
-            #     pattern="{x}",
-            #     rows=list(range(1, 8)) + list(range(9, 16)),
-            # )
-            .fmt_number(
-                columns=[_cols_gt],
-                decimals=0,
-                pattern="{x}",
-                rows=[0, 8],
-            )
-            .tab_header(
-                title=_title,
-                subtitle=md(
-                    f"Descrição estatística <b>{income_group_by_cols.selected_key}</b>"
-                ),
-            )
-            .cols_label(
-                **{_cols_gt:income_col_to_use.selected_key}
-                # num_family_members=md("Núm. de membros da família"),
-            )
-            .tab_stub(rowname_col="statistic", groupname_col="answer")
-        ) for (_df, _title) in zip([_df_gt_first, _df_gt_last], ["Tempo inicial", "Tempo final"])]
 
-        return _fig, _gt
+            _df_gt_last = pl.concat(
+                [
+                    (
+                        _last_data.select(_cols_gt)
+                        .describe()
+                        .with_columns(answer=pl.lit("Total"))
+                    )
+                ]
+            )
+        else:
+            _df_gt_first = pl.concat(
+                [
+                    (
+                        _first_data.filter(True & (pl.col(_group_by_col) == "Sim"))
+                        .select(_cols_gt)
+                        .describe()
+                        .with_columns(answer=pl.lit("Sim"))
+                    ),
+                    (
+                        _first_data.filter(True & (pl.col(_group_by_col) == "Não"))
+                        .select(_cols_gt)
+                        .describe()
+                        .with_columns(answer=pl.lit("Não"))
+                    ),
+                ]
+            )
+
+            _df_gt_last = pl.concat(
+                [
+                    (
+                        _last_data.filter(True & (pl.col(_group_by_col) == "Sim"))
+                        .select(_cols_gt)
+                        .describe()
+                        .with_columns(answer=pl.lit("Sim"))
+                    ),
+                    (
+                        _last_data.filter(True & (pl.col(_group_by_col) == "Não"))
+                        .select(_cols_gt)
+                        .describe()
+                        .with_columns(answer=pl.lit("Não"))
+                    ),
+                ]
+            )
+
+        _gt = [
+            (
+                GT(_df.filter(pl.col.statistic != "null_count"))
+                .fmt_number(
+                    columns=[_col_to_use],
+                    # force_sign=True,
+                    decimals=2,
+                    # scale_by=100,
+                    pattern="R$ {x}",
+                    rows=list(range(1, 8)) + list(range(9, 16)),
+                )
+                .fmt_number(
+                    columns=[_cols_gt],
+                    decimals=0,
+                    pattern="{x}",
+                    rows=[0, 8],
+                )
+                .tab_header(
+                    title=_title,
+                    subtitle=md(
+                        f"Descrição estatística <b>{income_group_by_cols.selected_key}</b>"
+                    )
+                    if _group_by_col
+                    else "Descrição estatística",
+                )
+                .cols_label(**{_cols_gt: income_col_to_use.selected_key})
+                .tab_stub(
+                    rowname_col="statistic",
+                    groupname_col="answer",
+                )
+            )
+            for (_df, _title) in zip(
+                [_df_gt_first, _df_gt_last], ["Tempo inicial", "Tempo final"]
+            )
+        ]
+
+        return _fig, _gt, _first_data, _last_data
     return (get_income_plot,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(
     bin_size_slider,
     cb_first_time,
     cb_last_time,
-    get_income_plot,
     income_col_to_use,
     income_group_by_cols,
     max_x_slider,
     max_y_slider,
     mo,
 ):
-    _fig, _gt = get_income_plot()
-
     mo.vstack(
         [
             mo.hstack(
@@ -1361,8 +1379,27 @@ def _(
                 ],
                 justify="start",
             ),
+        ]
+    )
+    return
+
+
+@app.cell
+def _(get_income_plot, mo):
+    _fig, _gt, _df_first, _df_last = get_income_plot()
+
+    mo.vstack(
+        [
             _fig,
-            mo.accordion({"Descrição estatística do agrupamento": mo.hstack(_gt, justify="space-around")}) if _gt else "",
+            mo.accordion(
+                {
+                    "Descrição estatística do agrupamento": mo.hstack(
+                        _gt, justify="space-around"
+                    )
+                }
+            )
+            if _gt
+            else "",
         ]
     )
     return
@@ -1498,7 +1535,7 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(
     df_long_first,
     df_long_last,
@@ -1561,11 +1598,13 @@ def _(
             )
         if _dimension == "gender":
             _df_plot = _df_plot.filter(
-                pl.col.gender.is_in([
-                    "Mulher trans", # 2 pessoa
-                    "Homem trans", # 1 pessoa
-                    "Não binário",# 1 pessoa
-                ]).not_()
+                pl.col.gender.is_in(
+                    [
+                        "Mulher trans",  # 2 pessoa
+                        "Homem trans",  # 1 pessoa
+                        "Não binário",  # 1 pessoa
+                    ]
+                ).not_()
             )
 
         _fig = px.parallel_categories(
@@ -2374,14 +2413,40 @@ def _():
             ],
         },
         "BathroomQualit": {
-            "map": {},
+            "map": {
+                "Nenhuma opção": [
+                    "Nenhuma opção",
+                    "0",
+                ],
+                "Parede de azulejo": [
+                    "Azulejo até a metade do banheiro",
+                    "Azulejo todo ruim",
+                ],
+                "Outros": [
+                    "A casa não possui chuveiro",
+                    "Está em obra",
+                    "Não tem chuveiro",
+                    "Banheiro de madeira",
+                    "Em obra",
+                    "ardosia piso",
+                    "Outro",
+                    "a privada não havia tampa. Moradores que tiveram a iniciativa e compraram, mas a imobiliária já ressarciu eles.",
+                    "Só a metade da parede.",
+                    "Piso e parede de cimento",
+                    "Tem pia.",
+                ],
+            },
             "order": [
-                "Box ou cortina que fecha o chuveiro",
+                "Nenhuma opção",
+                "Privada sem tampa",
+                "Privada com tampa",
+                "Chuveiro com água fria",
                 "Chuveiro com água quente",
+                "Box ou cortina que fecha o chuveiro",
                 "Parede de azulejo",
                 "Piso de azulejo",
                 "Porta externa que fecha o banheiro",
-                "Privada com tampa",
+                "Outros",
             ],
         },
         "HousingProblems": {
