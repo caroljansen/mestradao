@@ -123,7 +123,6 @@ def _(pl):
             .len()
             .sort("question")
         )
-
     return
 
 
@@ -203,22 +202,26 @@ def _(
     _var_cols = sorted(list(set(_df.columns) - set(_idx_cols)))
     _final_cols = _idx_cols + _var_cols
 
+    _df.write_csv("base_wide.csv")
+    _log_df.write_csv("base_log.csv")
+
     mo.vstack(
         [
             _df,
-            # _log_df,
+            _log_df,
         ]
         # .select(_final_cols)
     )
 
-    df_final = _df
-    _df
+    # df_final = _df
+    # _df
     # pl.Series(
     #     _df
     #         .select(pl.col.original_column).unique()
     #     # .select(_final_cols)
     #     # .select(_idx_cols + ["Race_FIRST"]) # TODO Fix! não retorna nada
     # ).to_list()
+
     return
 
 
@@ -245,7 +248,7 @@ def _(ASSERTION_MAP, SINGLE_TIME_QUESTIONS, pl):
         "Adiciona colunas derivadas de outras, como etapa final do processamento da base."
 
         # IncomePerCapita
-    
+
         _df_first = df_wide.filter(
             (pl.col.Income_FIRST != "NA") & (pl.col.HowManyPHHH != "NA")
         ).with_columns(
@@ -619,7 +622,7 @@ def _(add_new_questions, df_original, get_df_long):
 def _(pl):
     def add_new_questions(df_long):
         # MUDAR!!! MUDOU A COLUNA!
-    
+
         _HealthGenKidsNames_df = (
             df_long.filter(pl.col("question") == "HealthGenKidsNames")
             .group_by("id_family_datalake", "time")
@@ -766,7 +769,7 @@ def get_col_dict():
         | dic_T1_3_list[2]
         | complementary_vars
     )
-    
+
     col_dict = (
         {
             "Categoria_IGF_T0": "CategoriaIGF_T0",
