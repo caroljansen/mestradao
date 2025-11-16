@@ -11,6 +11,11 @@ def _(mo):
 
 
 @app.cell
+def _():
+    return
+
+
+@app.cell
 def _(mo):
     mo.md(
         r"""
@@ -1385,6 +1390,11 @@ def _(
 
 
 @app.cell
+def _():
+    return
+
+
+@app.cell
 def _(get_income_plot, mo):
     _fig, _gt, _df_first, _df_last = get_income_plot()
 
@@ -1764,8 +1774,10 @@ def _():
         "Floor": "O chão ou piso da sua casa é, na maioria dos cômodos, feito de qual material?",
         "FoodManytimes": "Quantas vezes a família faz refeições ao dia?",
         "Garbage": "O que é feito com o lixo da casa?   ",
-        "HealthGenKidsNames": "Quantos adultos maiores de 18 anos da família apresentam as seguintes condições?  ",
-        "HealthGenNames": "Quantas crianças e adolescentes de 0 a 17 anos da família apresentaram as seguintes condições?",
+        "HealthGenNames": "Quantos adultos maiores de 18 anos da família apresentam as seguintes condições?",
+        "HealthGenKidsNames": "Quantas crianças e adolescentes de 0 a 17 anos da família apresentaram as seguintes condições?",
+        "CountHealthGenNames": "Quantas doenças em adultos maiores de 18 anos da família?",
+        "CountHealthGenKidsNames": "Quantas doenças em crianças e adolescentes de 0 a 17 anos da família?",
         "HousingProblems": "Quais são as principais dificuldades e ou risco que sua família enfrenta morando nessa casa?",
         "IncomeWorkS3": "Qual é a situação de trabalho principal?",
         "Internet": "Para que você usa a internet? ",
@@ -2320,6 +2332,28 @@ def _():
                 "Desnutrição",
             ],
         },
+        "CountHealthGenNames": {
+            "map": {},
+            "order": [
+                "Nenhuma doença",
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+            ],
+        },
+        "CountHealthGenKidsNames": {
+            "map": {},
+            "order": [
+                "Nenhuma doença",
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+            ],
+        },
         "Internet": [
             {
                 "subtitle": "Todas as respostas",
@@ -2413,28 +2447,36 @@ def _():
             ],
         },
         "BathroomQualit": {
-            "map": {
-                "Nenhuma opção": [
-                    "Nenhuma opção",
-                    "0",
-                ],
-                "Parede de azulejo": [
-                    "Azulejo até a metade do banheiro",
-                    "Azulejo todo ruim",
-                ],
-                "Outros": [
-                    "A casa não possui chuveiro",
-                    "Está em obra",
-                    "Não tem chuveiro",
-                    "Banheiro de madeira",
-                    "Em obra",
-                    "ardosia piso",
-                    "Outro",
-                    "a privada não havia tampa. Moradores que tiveram a iniciativa e compraram, mas a imobiliária já ressarciu eles.",
-                    "Só a metade da parede.",
-                    "Piso e parede de cimento",
-                    "Tem pia.",
-                ],
+            # "Privada sem tampa",
+            # "Privada com tampa",
+            # "Box ou cortina que fecha o chuveiro",
+            # "Chuveiro com água fria",
+            # "Chuveiro com água quente",
+            # "Piso de azulejo",
+            # "Porta externa que fecha o banheiro",
+            "map":{
+            # "map": {
+            #     "Nenhuma opção": [
+            #         "Nenhuma opção",
+            #         "0",
+            #     ],
+            #     "Parede de azulejo": [
+            #         "Azulejo até a metade do banheiro",
+            #         "Azulejo todo ruim",
+            #     ],
+            #     "Outros": [
+            #         "A casa não possui chuveiro",
+            #         "Está em obra",
+            #         "Não tem chuveiro",
+            #         "Banheiro de madeira",
+            #         "Em obra",
+            #         "ardosia piso",
+            #         "Outro",
+            #         "a privada não havia tampa. Moradores que tiveram a iniciativa e compraram, mas a imobiliária já ressarciu eles.",
+            #         "Só a metade da parede.",
+            #         "Piso e parede de cimento",
+            #         "Tem pia.",
+            #     ],
             },
             "order": [
                 "Nenhuma opção",
@@ -2938,6 +2980,8 @@ def _(ASSERTION_MAP, name_dict, np, pl, print, px):
             "Garbage",
             "HealthGenKidsNames",
             "HealthGenNames",
+            "CountHealthGenKidsNames",
+            "CountHealthGenNames",
             "HousingProblems",
             "Income",
             "IncomeWorkS3",
