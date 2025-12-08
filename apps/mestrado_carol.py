@@ -14,6 +14,30 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
+    # TODO
+
+    - Revisar parte a parte
+    """
+    )
+    return
+
+
+@app.cell
+def _(df_plot_variables, pl):
+    df_plot_variables.select("question", "time").group_by("*").len("count").filter(pl.col.count != 673)
+    return
+
+
+@app.cell
+def _(df_long):
+    df_long.select("question", "time").group_by("*").len("count")
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
     ## Estrutura
     Olá. 
 
@@ -116,11 +140,11 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(GT, df_plot_variables, loc, md, style):
+def _(GT, df_long, loc, md, style):
     # Create the dataframe with the time distributions
     # Não precisa segregar por tempo, então removemos a coluna "time"
     respondentes_por_favela = (
-        df_plot_variables.select("FavelaID", "id_family_datalake")
+        df_long.select("FavelaID", "id_family_datalake")
         .unique()
         .group_by("FavelaID")
         .len()
@@ -164,13 +188,13 @@ def _(mo):
     ### Dados faltantes
 
 
-    Diante do caráter experimental do Favela 3D, há uma quantidade considerável de perguntas que não foram respondidas por algumas famílias. Na tabela, é apresentado o percentual de NAs para cada pergunta no tempo inicial e final.
+    Diante do caráter experimental do Favela 3D, há uma quantidade considerável de perguntas que não foram respondidas por algumas famílias. Na tabela, é apresentado o percentual de NAs para cada pergunta no tempo inicial e final. As porcentagens são calculadas tendo como denominador o número de famílias do estudo (673).
     """
     )
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(name_dict):
     THRESH_NA = 50
 
@@ -211,7 +235,6 @@ def _(name_dict):
                 last_df,
                 on=["question", "answer"],
                 how="full",
-                # suffixes=("_FIRST", "_LAST"),
             )
             .fill_null(0)
             .filter(pl.col("answer") == "NA")
@@ -235,7 +258,6 @@ def _(name_dict):
             missing_data = pl.DataFrame(
                 {
                     "question": missing_questions,
-                    # "answer": ["NA"] * len(missing_questions),
                     "count_first": [0] * len(missing_questions),
                     "pct_first": [0.0] * len(missing_questions),
                     "count_last": [0] * len(missing_questions),
@@ -260,7 +282,6 @@ def _(name_dict):
                 question=pl.col("value"),
             )
             .drop("value")
-            # .rename({"value": "question"})
         )
         # Create the GreatTable
         gt_table = (
@@ -277,11 +298,6 @@ def _(name_dict):
                 count_last=md("Núm. de NAs"),
                 pct_first=md("% de NAs"),
                 pct_last=md("% de NAs"),
-                # **{
-                #     col: md(col.replace("@", " @ "))
-                #     for col in _df.columns
-                #     if col != "question"
-                # },
             )
             .tab_spanner(
                 label=md("**Tempo INICIAL**"),
@@ -322,13 +338,6 @@ def _(name_dict):
                     ]
                 ),
             )
-            # .tab_style(
-            #     style.fill("#bde3c0"),
-            #     loc.body(
-            #         # columns=cs.starts_with("cha"),
-            #         rows=pl.col("pct_first")<THRESH_NA,
-            #     ),
-            # )
             .tab_style(
                 style.fill("#F5C8B4"),
                 loc.body(
@@ -344,8 +353,8 @@ def _(name_dict):
 
 
 @app.cell
-def _(df_plot_variables, mo, na_table, questions):
-    mo.accordion({"Tabela de NAs": na_table(df_plot_variables, questions)})
+def _(df_long, mo, na_table, questions):
+    mo.accordion({"Tabela de NAs": na_table(df_long, questions)})
     return
 
 
@@ -957,7 +966,7 @@ def _(mo, pl):
         )
     )
 
-    _df_long = (
+    df_long = (
         _df_wide.unpivot(
             index=[
                 "id_family_datalake",
@@ -988,18 +997,18 @@ def _(mo, pl):
     )
 
     # Concatena com as respostas que são "NA" (não respondidas)
-    _df_unanswered = _df_long.filter((pl.col.answer == "NA"))
+    _df_unanswered = df_long.filter((pl.col.answer == "NA"))
     # Concatena com as respostas que são "NA;NA;...;NA" (nenhuma opção)
-    _df_no_option = _df_long.filter(pl.col("answer").str.contains(r"^(NA;)+NA$"))
+    _df_no_option = df_long.filter(pl.col("answer").str.contains(r"^(NA;)+NA$"))
     # Multi-asserção
     _df_default = (
-        _df_long.filter((pl.col.answer != "NA"))
+        df_long.filter((pl.col.answer != "NA"))
         .with_columns(answer=pl.col("answer").str.split(";"))
         .explode("answer")
         .filter(pl.col("answer") != "NA")
     )
 
-    _df_long = pl.concat(
+    df_plot_variables = pl.concat(
         [
             _df_default,
             _df_no_option,
@@ -1007,10 +1016,9 @@ def _(mo, pl):
         ]
     )
 
-    df_plot_variables = _df_long
     df_plot_variables
 
-    return (df_plot_variables,)
+    return df_long, df_plot_variables
 
 
 @app.cell
