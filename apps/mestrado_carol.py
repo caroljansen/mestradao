@@ -44,25 +44,28 @@ def _(mo):
     ### Distribuição de tempo inicial e final
 
     A determinação do tempo inicial e final a ser analizado foi feita por pergunta por família, de modo a maximizar os dados disponíveis dentro das premissas da análise.
+
     Dessa forma, para cada pergunta de cada família, observa-se a primeira e a última coleta, desde que haja pelo menos dois "tempos" entre os dois momentos de coleta. As perguntas X famílias cuja diferença entre o tempo inicial e final era de apenas uma unidade (0 ➜ 1, 1 ➜ 2, 2 ➜ 3) foram removidas da análise.
+
+    Estão excluídas dessa análise as perguntas que só foram feitas em um tempo (`Race`, `Gender`, `HowManyPHHH`).
     """
     )
     return
 
 
 @app.cell
-def _(GT, ONE_TIME_QUESTIONS, loc, md, mo, pl, style):
+def _(mo, pl):
     # Leitura do df original em CSV
     _df_log_path = str(mo.notebook_location() / "public" / "base_log.csv")
-    _df_log = pl.read_csv(_df_log_path)
+    df_log = pl.read_csv(_df_log_path)
+    return (df_log,)
 
 
+@app.cell
+def _(GT, ONE_TIME_QUESTIONS, df_log, loc, md, pl, style):
     _time_distribution = (
-        _df_log
+        df_log
         .filter(pl.col("question_name").is_in(ONE_TIME_QUESTIONS).not_())
-        .select("id_family_datalake", "time_first", "time_last")
-        .group_by("*")
-        .len()
         .select("time_first", "time_last")
         .group_by("*")
         .len("count")
