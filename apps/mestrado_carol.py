@@ -375,8 +375,8 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo, name_dict, petals_cats):
-    _options = {v: k for k, v in name_dict.items() if k in petals_cats}
+def _(mo, name_dict, petals_names):
+    _options = {v: k for k, v in name_dict.items() if k in petals_names}
 
     petal_to_plot = mo.ui.dropdown(
         options=_options,
@@ -385,6 +385,7 @@ def _(mo, name_dict, petals_cats):
         searchable=True,
     )
     petal_to_plot
+    # print(_options)
     return (petal_to_plot,)
 
 
@@ -395,7 +396,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_long_first, df_long_last, name_dict, petal_to_plot, pl, px):
+def _(df_plot_variables, name_dict, petal_to_plot, pl, px):
     igf_color_dict = dict(
         value=[
             "E1",
@@ -423,18 +424,25 @@ def _(df_long_first, df_long_last, name_dict, petal_to_plot, pl, px):
 
     df_colors = pl.DataFrame(igf_color_dict)
 
-    question_name = petal_to_plot.value
-    df_plot = (
-        df_long_first.filter(pl.col("question") == question_name)
+    question_name = "Categoria"+petal_to_plot.value
+    _df_plot = (
+        df_plot_variables.filter(
+            (pl.col("question") == question_name) & (pl.col("time") == "FIRST")
+        )
         .with_columns(first_answer="answer")
         .select("id_family_datalake", "question", "first_answer")
-        .join(df_long_last, on=["id_family_datalake", "question"], how="left")
-        .with_columns(last_answer="answer")
+        .join(
+            df_plot_variables.filter(
+                (pl.col("question") == question_name) & (pl.col("time") == "LAST")
+            ).with_columns(last_answer="answer"),
+            on=["id_family_datalake", "question"],
+            how="left",
+        )
         .select("id_family_datalake", "question", "first_answer", "last_answer")
     ).join(df_colors, left_on="last_answer", right_on="value")
 
     fig = px.parallel_categories(
-        df_plot.select("first_answer", "last_answer", "color").sort(
+        _df_plot.select("first_answer", "last_answer", "color").sort(
             "first_answer", "last_answer"
         ),
         dimensions=["first_answer", "last_answer"],
@@ -474,7 +482,7 @@ def _(mo):
 def _(df_plot_variables, pct_2, petal_to_plot, plot_variables, px):
     plot_variables(
         df_plot_variables,
-        [petal_to_plot.value],
+        ["Categoria"+petal_to_plot.value],
         seggregate_favela=False,
         orientation="v",
         palette=px.colors.qualitative.Pastel,
@@ -495,30 +503,36 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_long_first, df_long_last, pl, px):
-    def parallel_plot(petal="AverageIGF"):
-        cols = ["answer_first", "answer_last"]
+def _(df_plot_variables, petal_to_plot, pl, px):
+    def parallel_plot(petal):
+        cols = ["first_answer", "last_answer"]
 
         legends = [
             f"Média de <b>{petal}</b> (T {time})" for time in ["inicial", "final"]
         ]
 
-        df_plot = (
-            df_long_first.join(
-                df_long_last, how="left", on=["id_family_datalake", "question"]
+        _df_plot = (
+            df_plot_variables.filter(
+                (pl.col("question") == petal) & (pl.col("time") == "FIRST") & (pl.col("answer") != "NA")
             )
-            .filter((pl.col("question") == petal) & (pl.col("answer") != "NA"))
-            .select(
-                pl.col("answer").alias("answer_first"),
-                pl.col("answer_right").alias("answer_last"),
+            .with_columns(first_answer="answer")
+            .select("id_family_datalake", "question", "first_answer")
+            .join(
+                df_plot_variables.filter(
+                    (pl.col("question") == petal) & (pl.col("time") == "LAST") & (pl.col("answer") != "NA")
+                ).with_columns(last_answer="answer"),
+                on=["id_family_datalake", "question"],
+                how="left",
             )
+            .select("id_family_datalake", "question", "first_answer", "last_answer")
         )
-        df_plot = df_plot.select(
+    
+        _df_plot = _df_plot.select(
             [pl.col(col_name).cast(pl.Float32) for col_name in cols]
         )
 
         fig = px.parallel_coordinates(
-            df_plot,
+            _df_plot,
             color=cols[-1],
             title="Média da nota do IGF de cada família no tempo inicial e final",
             labels={k: v for k, v in zip(cols, legends)},
@@ -539,7 +553,13 @@ def _(df_long_first, df_long_last, pl, px):
         return fig
 
 
-    parallel_plot()
+    parallel_plot("Average"+petal_to_plot.value)
+    return
+
+
+@app.cell
+def _(petal_to_plot):
+    petal_to_plot.value
     return
 
 
@@ -603,6 +623,12 @@ def _(df_plot_variables, pct_4, plot_variables, px, question_to_plot):
         palette=px.colors.qualitative.Pastel,
         percentage=pct_4.value,
     )
+    return
+
+
+@app.cell
+def _(question_to_plot):
+    question_to_plot.value
     return
 
 
@@ -1083,6 +1109,19 @@ def _(get_vars_IGF):
         "CategoriaEnvironment",
     ]
 
+    petals_names = [
+        "IGF",
+        "Income",
+        "Citizenship",
+        "Culture",
+        "FirstInfancy",
+        "Health",
+        "Housing",
+        "Schooling",
+        "WomanAutonomy",
+        "Environment",
+    ]
+
     petals_avg = [
         "AverageIGF",
         "AverageIncome",
@@ -1096,7 +1135,7 @@ def _(get_vars_IGF):
         "AverageEnvironment",
     ]
 
-    return petals_cats, questions, wip_multiple_assertions
+    return petals_names, questions, wip_multiple_assertions
 
 
 @app.cell
@@ -1130,6 +1169,16 @@ def _():
         "Walls": "As paredes da sua casa são, na maioria dos cômodos, feitas de qual material?",
         "Water": "Sobre o fornecimento de água...",
         "WaterFrequency": "Com qual frequência você tem água na sua casa?",
+        "IGF": "Média das dimensões do IGF",
+        "Income": "Geração de renda",
+        "Citizenship": "Cidadania",
+        "Culture": "Cultura",
+        "FirstInfancy": "Primeira infância",
+        "Health": "Saúde",
+        "Housing": "Moradia e urbanismo",
+        "Schooling": "Educação",
+        "WomanAutonomy": "Autonomia das mulheres",
+        "Environment": "Meio ambiente",
         "CategoriaIGF": "Média das dimensões do IGF",
         "CategoriaIncome": "Geração de renda",
         "CategoriaCitizenship": "Cidadania",
@@ -1140,6 +1189,16 @@ def _():
         "CategoriaSchooling": "Educação",
         "CategoriaWomanAutonomy": "Autonomia das mulheres",
         "CategoriaEnvironment": "Meio ambiente",
+        "AverageIGF": "Média das dimensões do IGF",
+        "AverageIncome": "Geração de renda",
+        "AverageCitizenship": "Cidadania",
+        "AverageCulture": "Cultura",
+        "AverageFirstInfancy": "Primeira infância",
+        "AverageHealth": "Saúde",
+        "AverageHousing": "Moradia e urbanismo",
+        "AverageSchooling": "Educação",
+        "AverageWomanAutonomy": "Autonomia das mulheres",
+        "AverageEnvironment": "Meio ambiente",
     }
     return (name_dict,)
 
