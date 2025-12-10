@@ -905,29 +905,15 @@ def _(get_income_plot, mo):
 @app.cell
 def _(mo, pl):
     # Leitura do df original em CSV
-    _df_long_path = str(mo.notebook_location() / "public" / "base_long.csv")
-    # Passa o dataframe para o formato long (uma row por resposta, ao invés de uma row por família)
-    df_long = (
-        pl.read_csv(_df_long_path)
-    )
-    # Concatena com as respostas que são "NA" (não respondidas)
-    _df_unanswered = df_long.filter((pl.col.answer == "NA"))
-    # Concatena com as respostas que são "NA;NA;...;NA" (nenhuma opção)
-    _df_no_option = df_long.filter(pl.col("answer").str.contains(r"^(NA;)+NA$"))
-    # Multi-asserção
-    _df_default = (
-        df_long.filter((pl.col.answer != "NA"))
-        .with_columns(answer=pl.col("answer").str.split(";"))
-        .explode("answer")
-        .filter(pl.col("answer") != "NA")
-    )
+    # _df_long_path = str(mo.notebook_location() / "public" / "base_long.csv")
 
-    df_plot_variables = pl.concat(
-        [
-            _df_default,
-            _df_no_option,
-            _df_unanswered,
-        ]
+    # Dataframe em formato long (uma row por família/resposta, ao invés de uma row por família)
+    df_long = (
+        pl.read_csv(str(mo.notebook_location() / "public" / "base_long.csv"))
+    )
+    # Dataframe em formato long explodido, em que cada resposta de multi-asserções aparece em uma linha
+    df_plot_variables = (
+        pl.read_csv(str(mo.notebook_location() / "public" / "base_exploded.csv"))
     )
     return df_long, df_plot_variables
 
