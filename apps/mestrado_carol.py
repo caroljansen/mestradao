@@ -14,30 +14,6 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-    # TODO
-
-    - Revisar parte a parte
-    """
-    )
-    return
-
-
-@app.cell
-def _(df_plot_variables, pl):
-    df_plot_variables.select("question", "time").group_by("*").len("count").filter(pl.col.count != 673)
-    return
-
-
-@app.cell
-def _(df_long):
-    df_long.select("question", "time").group_by("*").len("count")
-    return
-
-
-@app.cell
-def _(mo):
-    mo.md(
-        r"""
     ## Estrutura
     Olá. 
 
@@ -88,8 +64,7 @@ def _(mo, pl):
 @app.cell
 def _(GT, ONE_TIME_QUESTIONS, df_log, loc, md, pl, style):
     _time_distribution = (
-        df_log
-        .filter(pl.col("question_name").is_in(ONE_TIME_QUESTIONS).not_())
+        df_log.filter(pl.col("question_name").is_in(ONE_TIME_QUESTIONS).not_())
         .select("time_first", "time_last")
         .group_by("*")
         .len("count")
@@ -195,7 +170,7 @@ def _(mo):
 
 
 @app.cell
-def _(name_dict):
+def _(question_name_dict):
     THRESH_NA = 50
 
 
@@ -271,7 +246,7 @@ def _(name_dict):
 
         _df = _df.sort("count_first", descending=True)
         question_name_df = pl.DataFrame(
-            dict(key=name_dict.keys(), value=name_dict.values())
+            dict(key=question_name_dict.keys(), value=question_name_dict.values())
         )
         _df = (
             _df.join(
@@ -375,8 +350,8 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo, name_dict, petals_names):
-    _options = {v: k for k, v in name_dict.items() if k in petals_names}
+def _(PETALS_NAMES, mo, petal_name_dict):
+    _options = {v: k for k, v in petal_name_dict.items() if k in PETALS_NAMES}
 
     petal_to_plot = mo.ui.dropdown(
         options=_options,
@@ -396,7 +371,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(df_plot_variables, name_dict, petal_to_plot, pl, px):
+def _(df_plot_variables, petal_to_plot, pl, px, question_name_dict):
     igf_color_dict = dict(
         value=[
             "E1",
@@ -413,18 +388,14 @@ def _(df_plot_variables, name_dict, petal_to_plot, pl, px):
             "#72B7B2",
             "#3366CC",
             "#6E899C",
-            # "#EB5133",
-            # "#EB7E69",
-            # "#F7F7A1",
-            # "#F7CFA1",
-            # "#3CF6D7",
-            # "#B8B8B8",
         ],
     )
-
     df_colors = pl.DataFrame(igf_color_dict)
+    question_name = "Categoria" + petal_to_plot.value
 
-    question_name = "Categoria"+petal_to_plot.value
+    # Definir a ordem desejada
+    desired_order = ["D", "P2", "P1", "E2", "E1", "NA"]
+
     _df_plot = (
         df_plot_variables.filter(
             (pl.col("question") == question_name) & (pl.col("time") == "FIRST")
@@ -442,21 +413,32 @@ def _(df_plot_variables, name_dict, petal_to_plot, pl, px):
     ).join(df_colors, left_on="last_answer", right_on="value")
 
     fig = px.parallel_categories(
-        _df_plot.select("first_answer", "last_answer", "color").sort(
-            "first_answer", "last_answer"
-        ),
+        _df_plot.select("first_answer", "last_answer", "color"),
         dimensions=["first_answer", "last_answer"],
-        title=f"<b>{name_dict.get(question_name)}</b>",
+        title=f"<b>{question_name_dict.get(question_name)}</b>",
         subtitle="Cores de acordo com a última resposta",
         color="color",
         labels={
             "first_answer": "Primeira resposta da família",
             "last_answer": "Última resposta da família",
-        },
+        }
     )
+
+    # Definir a ordem das categorias
+    fig.update_traces(
+        dimensions=[
+            dict(label="Primeira resposta da família", categoryorder="array", categoryarray=desired_order),
+            dict(label="Última resposta da família", categoryorder="array", categoryarray=desired_order)
+        ]
+    )
+
     fig.update_layout(margin=dict(t=100, l=100, r=100, b=100))
     fig
-    # fig.show()
+    return
+
+
+@app.cell
+def _():
     return
 
 
@@ -482,7 +464,7 @@ def _(mo):
 def _(df_plot_variables, pct_2, petal_to_plot, plot_variables, px):
     plot_variables(
         df_plot_variables,
-        ["Categoria"+petal_to_plot.value],
+        ["Categoria" + petal_to_plot.value],
         seggregate_favela=False,
         orientation="v",
         palette=px.colors.qualitative.Pastel,
@@ -513,20 +495,26 @@ def _(df_plot_variables, petal_to_plot, pl, px):
 
         _df_plot = (
             df_plot_variables.filter(
-                (pl.col("question") == petal) & (pl.col("time") == "FIRST") & (pl.col("answer") != "NA")
+                (pl.col("question") == petal)
+                & (pl.col("time") == "FIRST")
+                & (pl.col("answer") != "NA")
             )
             .with_columns(first_answer="answer")
             .select("id_family_datalake", "question", "first_answer")
             .join(
                 df_plot_variables.filter(
-                    (pl.col("question") == petal) & (pl.col("time") == "LAST") & (pl.col("answer") != "NA")
+                    (pl.col("question") == petal)
+                    & (pl.col("time") == "LAST")
+                    & (pl.col("answer") != "NA")
                 ).with_columns(last_answer="answer"),
                 on=["id_family_datalake", "question"],
                 how="left",
             )
-            .select("id_family_datalake", "question", "first_answer", "last_answer")
+            .select(
+                "id_family_datalake", "question", "first_answer", "last_answer"
+            )
         )
-    
+
         _df_plot = _df_plot.select(
             [pl.col(col_name).cast(pl.Float32) for col_name in cols]
         )
@@ -553,13 +541,7 @@ def _(df_plot_variables, petal_to_plot, pl, px):
         return fig
 
 
-    parallel_plot("Average"+petal_to_plot.value)
-    return
-
-
-@app.cell
-def _(petal_to_plot):
-    petal_to_plot.value
+    parallel_plot("Average" + petal_to_plot.value)
     return
 
 
@@ -570,6 +552,9 @@ def _(mo):
     ### Análise 4 - Respostas às perguntas
 
     Quais as respostas dadas pelas famílias às perguntas do Programa em cada tempo?
+
+    > - Para perguntas de asserção única, o eixo `y` apresenta o número de famílias que deram aquela resposta.
+    > - Para perguntas de múltipla asserção, o eixo `y` apresenta o número de respostas dadas àquela asserção.
     """
     )
     return
@@ -583,24 +568,15 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
-    mo.accordion(
-        {
-            "Pendências": """
-    - Contagem de número de respostas positivas/negativas (doenças, problemas na casa, acesso à internet, etc) precisam de uma re-normalização para ter uma row por família
-    - O `BathroomQualit` também precisa juntar as respostas do T0 que estão em várias colunas
-    """
-        }
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _(mo, name_dict, questions, wip_multiple_assertions):
+def _(MULTIPLE_ASSERTION_QUESTIONS, mo, question_name_dict, questions):
     _question_names = sorted(
-        list((set(questions) - set(["Income"])) | set(wip_multiple_assertions))
+        list(
+            (set(questions) - set(["Income"])) | set(MULTIPLE_ASSERTION_QUESTIONS)
+        )
     )
-    _options = {v: k for k, v in name_dict.items() if k in _question_names}
+    _options = {
+        v: k for k, v in question_name_dict.items() if k in _question_names
+    }
 
     question_to_plot = mo.ui.dropdown(
         options=_options,
@@ -627,14 +603,8 @@ def _(df_plot_variables, pct_4, plot_variables, px, question_to_plot):
 
 
 @app.cell
-def _(question_to_plot):
-    question_to_plot.value
-    return
-
-
-@app.cell
 def _(mo):
-    mo.md(r"""### AVALIANDO SE FICA OU SAI:""")
+    mo.md(r"""### Análise 5 - Renda e Renda per Capita""")
     return
 
 
@@ -730,17 +700,14 @@ def _(
             # cyan="#17becf",  # (cyan)
         )
 
-        # ['', '/', '\\', 'x', '-', '|', '+', '.']
-        _palette_pattern = dict(
-            Não="\\",
-            NA="+",
-            Sim="x",
-        )
         _color_first = "purple"
         _color_last = "green"
 
-        _shape_first = "-"
-        _shape_last = "x"
+        # ['', '/', '\\', 'x', '-', '|', '+', '.']
+        # _shape_first = "-"
+        # _shape_last = "x"
+        _shape_first = "\\"
+        _shape_last = "/"
 
         # [TODO] FILTER CONDITIONS
         # [TODO] PERCENTAGE AND CUMULATIVE
@@ -752,19 +719,13 @@ def _(
         }
 
         _data = df_plot_variables.filter(
-                (pl.col("question") == _col_to_use) & (pl.col("answer") != "NA")
+            (pl.col("question") == _col_to_use) & (pl.col("answer") != "NA")
         ).with_columns(pl.col("answer").cast(pl.Float64).alias(_col_to_use))
 
-
-        _first_data = _data.filter(
-            (pl.col.time == "FIRST")
-        )
-        _last_data = _data.filter(
-            (pl.col.time == "LAST")
-        )
+        _first_data = _data.filter((pl.col.time == "FIRST"))
+        _last_data = _data.filter((pl.col.time == "LAST"))
 
         _fig = go.Figure()
-
 
         if cb_first_time.value:
             _fig.add_trace(
@@ -772,7 +733,6 @@ def _(
                     name="Tempo <b>inicial</b>",
                     marker=dict(
                         pattern=dict(
-                            # shape="-",
                             shape=_shape_first,
                             fgcolor=lighten_color(_color_first, 0.1),
                             bgcolor=lighten_color(_color_first),
@@ -804,7 +764,6 @@ def _(
                     name="Tempo <b>final</b>",
                     marker=dict(
                         pattern=dict(
-                            # shape="-",
                             shape=_shape_last,
                             fgcolor=lighten_color(_color_last, 0.1),
                             bgcolor=lighten_color(_color_last),
@@ -1041,75 +1000,33 @@ def _(mo, pl):
             _df_unanswered,
         ]
     )
-
-    df_plot_variables
-
     return df_long, df_plot_variables
 
 
 @app.cell
-def _(df_plot_variables):
-    df_plot_variables
-    return
+def _(get_vars_IGF):
+    questions = get_vars_IGF()
+
+    return (questions,)
 
 
 @app.cell
-def _(get_vars_IGF):
-    # # Leitura do df original em CSV
-    # df_long_path = str(mo.notebook_location() / "public" / "df_long.csv")
-    # # Passa o dataframe para o formato long (uma row por resposta, ao invés de uma row por família)
-    # df_long = pl.read_csv(df_long_path)
+def _():
 
-    # # Enriquece o df_long com as datas da primeira e da última coleta de cada família
-    # df_long_periods = enrich_first_and_last_time(df_long)
-
-    # # Filtra só as respostas do tempo inicial e tempo final de cada família
-    # df_long_first = df_long_periods.filter(
-    #     (pl.col("time") == (pl.col("time_first")))
-    # )
-
-    # df_long_last = df_long_periods.filter(
-    #     (pl.col("time") == (pl.col("time_last")))
-    # )
-
-    # df_plot_variables = pl.concat(
-    #     [
-    #         df_long_first.with_columns(time=pl.lit("FIRST")),
-    #         df_long_last.with_columns(time=pl.lit("LAST")),
-    #     ]
-    # )
-
-    questions = get_vars_IGF()
-
-    wip_multiple_assertions = [
-        "Garbage",  # OK
-        "HousingProblems",  # OK
-        "CommFacilities",  # OK
-        "Internet",  # versão contagem OK, versão binária teria que re-normalizar para família (ao invés de multi assercao). Talvez gerar uma nova coluna?
-        "BathroomQualit",  # [TODO] Tem que fundir as colunas de T0 que estão separadas
-        "HealthGenKidsNames",  # versão contagem OK, NAs OK, número de doenças tem que normalizar para família
-        "HealthGenNames",  # versão contagem OK, NAs OK, número de doenças tem que normalizar para família
-        "Documents",  #
-        #
-        # São de outra pergunta
-        # "IncomeDesc",
-        # "JobSatisfaction"
+    MULTIPLE_ASSERTION_QUESTIONS = [
+        "Garbage",
+        "HousingProblems",
+        "CommFacilities",
+        "Internet",
+        "BathroomQualit",
+        "Health",
+        "HealthKids",
+        "Documents",
+        "IncomeDesc",
+        "JobSatisfaction",
     ]
 
-    petals_cats = [
-        "CategoriaIGF",
-        "CategoriaIncome",
-        "CategoriaCitizenship",
-        "CategoriaCulture",
-        "CategoriaFirstInfancy",
-        "CategoriaHealth",
-        "CategoriaHousing",
-        "CategoriaSchooling",
-        "CategoriaWomanAutonomy",
-        "CategoriaEnvironment",
-    ]
-
-    petals_names = [
+    PETALS_NAMES = [
         "IGF",
         "Income",
         "Citizenship",
@@ -1121,28 +1038,12 @@ def _(get_vars_IGF):
         "WomanAutonomy",
         "Environment",
     ]
-
-    petals_avg = [
-        "AverageIGF",
-        "AverageIncome",
-        "AverageCitizenship",
-        "AverageCulture",
-        "AverageFirstInfancy",
-        "AverageHealth",
-        "AverageHousing",
-        "AverageSchooling",
-        "AverageWomanAutonomy",
-        "AverageEnvironment",
-    ]
-
-    return petals_names, questions, wip_multiple_assertions
+    return MULTIPLE_ASSERTION_QUESTIONS, PETALS_NAMES
 
 
 @app.cell
 def _():
-    name_dict = {
-        "race": "Raça",
-        "gender": "Gênero",
+    question_name_dict = {
         "Access": "Existe algum integrante da família que não tem acesso a atividades de lazer, recreação e convívio social?",
         "BankAccount": "A família tem conta em banco?",
         "Bathroom": "Sobre o banheiro da sua casa...",
@@ -1154,9 +1055,9 @@ def _():
         "Eletricity": "Quanto à energia elétrica...",
         "Floor": "O chão ou piso da sua casa é, na maioria dos cômodos, feito de qual material?",
         "FoodManytimes": "Quantas vezes a família faz refeições ao dia?",
-        "Garbage": "O que é feito com o lixo da casa?   ",
-        "HealthGenKidsNames": "Quantos adultos maiores de 18 anos da família apresentam as seguintes condições?  ",
-        "HealthGenNames": "Quantas crianças e adolescentes de 0 a 17 anos da família apresentaram as seguintes condições?",
+        "Garbage": "O que é feito com o lixo da casa?",
+        "Health": "Quais condições foram apresentadas por adultos maiores de 18 anos da família?",
+        "HealthKids": "Quais condições foram apresentadas por crianças e adolescentes de 0 a 17 anos da família?",
         "HousingProblems": "Quais são as principais dificuldades e ou risco que sua família enfrenta morando nessa casa?",
         "IncomeWorkS3": "Qual é a situação de trabalho principal?",
         "Internet": "Para que você usa a internet? ",
@@ -1169,6 +1070,29 @@ def _():
         "Walls": "As paredes da sua casa são, na maioria dos cômodos, feitas de qual material?",
         "Water": "Sobre o fornecimento de água...",
         "WaterFrequency": "Com qual frequência você tem água na sua casa?",
+        "CategoriaIGF": "Média das dimensões do IGF (categoria)",
+        "CategoriaIncome": "Geração de renda (categoria)",
+        "CategoriaCitizenship": "Cidadania (categoria)",
+        "CategoriaCulture": "Cultura (categoria)",
+        "CategoriaFirstInfancy": "Primeira infância (categoria)",
+        "CategoriaHealth": "Saúde (categoria)",
+        "CategoriaHousing": "Moradia e urbanismo (categoria)",
+        "CategoriaSchooling": "Educação (categoria)",
+        "CategoriaWomanAutonomy": "Autonomia das mulheres (categoria)",
+        "CategoriaEnvironment": "Meio ambiente (categoria)",
+        "AverageIGF": "Média das dimensões do IGF (valor médio)",
+        "AverageIncome": "Geração de renda (valor médio)",
+        "AverageCitizenship": "Cidadania (valor médio)",
+        "AverageCulture": "Cultura (valor médio)",
+        "AverageFirstInfancy": "Primeira infância (valor médio)",
+        "AverageHealth": "Saúde (valor médio)",
+        "AverageHousing": "Moradia e urbanismo (valor médio)",
+        "AverageSchooling": "Educação (valor médio)",
+        "AverageWomanAutonomy": "Autonomia das mulheres (valor médio)",
+        "AverageEnvironment": "Meio ambiente (valor médio)",
+    }
+
+    petal_name_dict = {
         "IGF": "Média das dimensões do IGF",
         "Income": "Geração de renda",
         "Citizenship": "Cidadania",
@@ -1179,28 +1103,8 @@ def _():
         "Schooling": "Educação",
         "WomanAutonomy": "Autonomia das mulheres",
         "Environment": "Meio ambiente",
-        "CategoriaIGF": "Média das dimensões do IGF",
-        "CategoriaIncome": "Geração de renda",
-        "CategoriaCitizenship": "Cidadania",
-        "CategoriaCulture": "Cultura",
-        "CategoriaFirstInfancy": "Primeira infância",
-        "CategoriaHealth": "Saúde",
-        "CategoriaHousing": "Moradia e urbanismo",
-        "CategoriaSchooling": "Educação",
-        "CategoriaWomanAutonomy": "Autonomia das mulheres",
-        "CategoriaEnvironment": "Meio ambiente",
-        "AverageIGF": "Média das dimensões do IGF",
-        "AverageIncome": "Geração de renda",
-        "AverageCitizenship": "Cidadania",
-        "AverageCulture": "Cultura",
-        "AverageFirstInfancy": "Primeira infância",
-        "AverageHealth": "Saúde",
-        "AverageHousing": "Moradia e urbanismo",
-        "AverageSchooling": "Educação",
-        "AverageWomanAutonomy": "Autonomia das mulheres",
-        "AverageEnvironment": "Meio ambiente",
     }
-    return (name_dict,)
+    return petal_name_dict, question_name_dict
 
 
 @app.cell
@@ -1998,7 +1902,15 @@ def _():
 
 
 @app.cell
-def _(ASSERTION_MAP, name_dict, np, pl, print, px):
+def _(
+    ASSERTION_MAP,
+    MULTIPLE_ASSERTION_QUESTIONS,
+    np,
+    pl,
+    print,
+    px,
+    question_name_dict,
+):
     def get_assertion_map():
         """Returns the assertion map used to map answers to their respective categories."""
         from const import ASSERTION_MAP as assertion_map
@@ -2347,8 +2259,8 @@ def _(ASSERTION_MAP, name_dict, np, pl, print, px):
             "Floor",
             "FoodManytimes",
             "Garbage",
-            "HealthGenKidsNames",
-            "HealthGenNames",
+            "Health",
+            "HealthKids",
             "HousingProblems",
             "Income",
             "IncomeWorkS3",
@@ -2530,7 +2442,7 @@ def _(ASSERTION_MAP, name_dict, np, pl, print, px):
                     title=title
                     if title
                     # else f"Respostas à pergunta {question_name}",
-                    else name_dict.get(question_name),
+                    else question_name_dict.get(question_name),
                     # title=f"{questions_dict.get(question_name)}", # [TODO] Add function to get the full question from the question name
                     subtitle=f"[{question_name}] " + subtitle,
                     hover_data=hover_dict,
@@ -2539,18 +2451,7 @@ def _(ASSERTION_MAP, name_dict, np, pl, print, px):
                         answer="Resposta",
                         len="Núm. de respostas"
                         if question_name  # Questões com múltiplas asserções
-                        in [
-                            "BathroomQualit",
-                            "HousingProblems",
-                            "CommFacilities",
-                            "Garbage",
-                            "HealthGenKidsNames",
-                            "HealthGenNames",
-                            "Internet",
-                            "Documents",
-                            "IncomeDesc",
-                            "JobSatisfaction",
-                        ]
+                        in MULTIPLE_ASSERTION_QUESTIONS
                         else "Núm. de famílias",
                         time="Período",
                         percentage="% no período (com NAs)",
