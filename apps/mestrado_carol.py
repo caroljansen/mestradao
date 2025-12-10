@@ -905,47 +905,11 @@ def _(get_income_plot, mo):
 @app.cell
 def _(mo, pl):
     # Leitura do df original em CSV
-    _df_wide_path = str(mo.notebook_location() / "public" / "base_wide.csv")
+    _df_long_path = str(mo.notebook_location() / "public" / "base_long.csv")
     # Passa o dataframe para o formato long (uma row por resposta, ao invés de uma row por família)
-    _df_wide = (
-        pl.read_csv(_df_wide_path)
-        # Teste
-        # .filter(pl.col("id_family_datalake")=='1.11.3.2022.305139R_1hKnzTpsoM389fC')
-        .filter(
-            # pl.col("id_family_datalake") == "1.15.3.2022.155190R_ZE1ltzskFjWLkxr"
-        )
-    )
-
     df_long = (
-        _df_wide.unpivot(
-            index=[
-                "id_family_datalake",
-                "FavelaID",
-                "Gender",
-                "Race",
-                "HowManyPHHH",
-            ],
-            # + list(profile_cols.keys()),
-            variable_name="original_column",
-            value_name="answer",
-        )
-        .with_columns(
-            question=pl.col("original_column").str.extract(r"(.*)_.*$", 1),
-            time=pl.col("original_column").str.extract(r"(.*)_(.*)$", 2),
-        )
-        .select(
-            "id_family_datalake",
-            "question",
-            "answer",
-            "time",
-            "FavelaID",
-            "Gender",
-            "Race",
-            "HowManyPHHH",
-        )
-        # .filter(pl.col("question") == "Documents")
+        pl.read_csv(_df_long_path)
     )
-
     # Concatena com as respostas que são "NA" (não respondidas)
     _df_unanswered = df_long.filter((pl.col.answer == "NA"))
     # Concatena com as respostas que são "NA;NA;...;NA" (nenhuma opção)
