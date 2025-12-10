@@ -176,7 +176,7 @@ def _(
     _final_cols = _idx_cols + _var_cols
 
     base_wide = _df
-    base_log = _log_df
+    base_log = _log_df.sort(by=["id_family_datalake", "question_name"])
     base_long = (
         base_wide.unpivot(
             index=[
@@ -205,10 +205,37 @@ def _(
         )
     )
 
+
+
     base_wide.write_csv(str(mo.notebook_location() / "public" / "base_wide.csv"))
     base_long.write_csv(str(mo.notebook_location() / "public" / "base_long.csv"))
     base_log.write_csv(str(mo.notebook_location() / "public" / "base_log.csv"))
     return base_log, base_long, base_wide
+
+
+@app.cell
+def _(base_long, mo, pl):
+    # Concatena com as respostas que são "NA" (não respondidas)
+    _df_unanswered = base_long.filter((pl.col.answer == "NA"))
+    # Concatena com as respostas que são "NA;NA;...;NA" (nenhuma opção)
+    _df_no_option = base_long.filter(pl.col("answer").str.contains(r"^(NA;)+NA$"))
+    # Multi-asserção
+    _df_default = (
+        base_long.filter((pl.col.answer != "NA"))
+        .with_columns(answer=pl.col("answer").str.split(";"))
+        .explode("answer")
+        .filter(pl.col("answer") != "NA")
+    )
+
+    base_exploded = pl.concat(
+        [
+            _df_default,
+            _df_no_option,
+            _df_unanswered,
+        ]
+    )
+    base_exploded.write_csv(str(mo.notebook_location() / "public" / "base_exploded.csv"))
+    return
 
 
 @app.cell
