@@ -5,28 +5,6 @@ app = marimo.App(width="columns")
 
 
 @app.cell
-def _(mo):
-    mo.md(
-        r"""
-    ### TODO
-
-    - ~~Passar para long~~
-    - ~~Redefinir o que é FIRST e LAST por question~~
-        - ~~Ainda assim, $FIRST \in [0,1]$ e $LAST \in [2,3]$, sendo que $LAST - FIRST >1$~~
-    - Adicionar variáveis tratadas com o de-para (`map`) já aplicado
-    - Variáveis que foram criadas
-        - ~~CountHealthGenNames e CountHealthGenKidsNames: Validar que estamos separando direito o que é NA e o que é Nenhuma doença~~
-            - > Criamos `Health` e `HealthKids` que usa `Ref_GenIndex_param` e `Ref_GenKidsIndex_param` para mapear o que é NA de fato e o que é `Nenhuma doença`.
-        - Renda per capita
-        - VALIDAR DREAMS KIDS
-        - **Outras?**
-    - Passar de volta para wide
-    """
-    )
-    return
-
-
-@app.cell
 def _(pl):
     def enrich_first_and_last_time(df_long):
         """Enriches the dataframe with the first and last time for each family. NAs are removed before computing first and last times.
@@ -74,14 +52,8 @@ def _(pl):
             suffix="_last",
         )
 
-        # Remove families X questions that only have one time difference between the first and last time
-        # df_long_periods_filtered = df_long_periods.filter(
-        #     pl.col("time_last").cast(pl.Int8) - pl.col("time_first").cast(pl.Int8)
-        #     > 1
-        # )
 
         return df_long_periods
-        # return df_long_periods_filtered
     return (enrich_first_and_last_time,)
 
 
@@ -140,6 +112,7 @@ def _(
     long_to_wide,
     map_and_join_answers,
     mo,
+    pl,
     remove_small_interval,
     rename_favela,
     set_first_and_last,
@@ -202,26 +175,52 @@ def _(
     _var_cols = sorted(list(set(_df.columns) - set(_idx_cols)))
     _final_cols = _idx_cols + _var_cols
 
-    _df.write_csv("base_wide.csv")
-    _log_df.write_csv("base_log.csv")
+    base_wide = _df
+    base_log = _log_df
+    base_long = (
+        base_wide.unpivot(
+            index=[
+                "id_family_datalake",
+                "FavelaID",
+                "Gender",
+                "Race",
+                "HowManyPHHH",
+            ],
+            variable_name="original_column",
+            value_name="answer",
+        )
+        .with_columns(
+            question=pl.col("original_column").str.extract(r"(.*)_.*$", 1),
+            time=pl.col("original_column").str.extract(r"(.*)_(.*)$", 2),
+        )
+        .select(
+            "id_family_datalake",
+            "question",
+            "answer",
+            "time",
+            "FavelaID",
+            "Gender",
+            "Race",
+            "HowManyPHHH",
+        )
+    )
 
+    base_wide.write_csv(str(mo.notebook_location() / "public" / "base_wide.csv"))
+    base_long.write_csv(str(mo.notebook_location() / "public" / "base_long.csv"))
+    base_log.write_csv(str(mo.notebook_location() / "public" / "base_log.csv"))
+    return base_log, base_long, base_wide
+
+
+@app.cell
+def _(base_log, base_long, base_wide, mo):
     mo.vstack(
         [
-            _df,
-            _log_df,
+            base_wide,
+            base_long,
+            base_log,
         ]
         # .select(_final_cols)
     )
-
-    # df_final = _df
-    # _df
-    # pl.Series(
-    #     _df
-    #         .select(pl.col.original_column).unique()
-    #     # .select(_final_cols)
-    #     # .select(_idx_cols + ["Race_FIRST"]) # TODO Fix! não retorna nada
-    # ).to_list()
-
     return
 
 
