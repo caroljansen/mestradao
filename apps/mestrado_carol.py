@@ -370,12 +370,6 @@ def _(mo):
 
 
 @app.cell
-def _(mo):
-    mo.md(r"""> IGF, Cidadania, Autonomia das mulheres: estranho""")
-    return
-
-
-@app.cell
 def _(df_plot_variables, petal_to_plot, pl, px, question_name_dict):
     _igf_color_dict = dict(
         value=[
