@@ -360,7 +360,6 @@ def _(PETALS_NAMES, mo, petal_name_dict):
         searchable=True,
     )
     petal_to_plot
-    # print(_options)
     return (petal_to_plot,)
 
 
@@ -370,9 +369,15 @@ def _(mo):
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
+def _(mo):
+    mo.md(r"""> IGF, Cidadania, Autonomia das mulheres: estranho""")
+    return
+
+
+@app.cell
 def _(df_plot_variables, petal_to_plot, pl, px, question_name_dict):
-    igf_color_dict = dict(
+    _igf_color_dict = dict(
         value=[
             "E1",
             "E2",
@@ -390,55 +395,66 @@ def _(df_plot_variables, petal_to_plot, pl, px, question_name_dict):
             "#6E899C",
         ],
     )
-    df_colors = pl.DataFrame(igf_color_dict)
-    question_name = "Categoria" + petal_to_plot.value
+    _df_colors = pl.DataFrame(_igf_color_dict)
+    _question_name = "Categoria" + petal_to_plot.value
 
     # Definir a ordem desejada
-    desired_order = ["D", "P2", "P1", "E2", "E1", "NA"]
+    _desired_order = ["D", "P2", "P1", "E2", "E1", "NA"]
 
     _df_plot = (
         df_plot_variables.filter(
-            (pl.col("question") == question_name) & (pl.col("time") == "FIRST")
+            (pl.col("question") == _question_name) & (pl.col("time") == "FIRST")
         )
         .with_columns(first_answer="answer")
         .select("id_family_datalake", "question", "first_answer")
         .join(
             df_plot_variables.filter(
-                (pl.col("question") == question_name) & (pl.col("time") == "LAST")
+                (pl.col("question") == _question_name) & (pl.col("time") == "LAST")
             ).with_columns(last_answer="answer"),
             on=["id_family_datalake", "question"],
             how="left",
         )
         .select("id_family_datalake", "question", "first_answer", "last_answer")
-    ).join(df_colors, left_on="last_answer", right_on="value")
+    ).join(_df_colors, left_on="last_answer", right_on="value")
 
     fig = px.parallel_categories(
         _df_plot.select("first_answer", "last_answer", "color"),
         dimensions=["first_answer", "last_answer"],
-        title=f"<b>{question_name_dict.get(question_name)}</b>",
+        title=f"<b>{question_name_dict.get(_question_name)}</b>",
         subtitle="Cores de acordo com a última resposta",
         color="color",
         labels={
             "first_answer": "Primeira resposta da família",
             "last_answer": "Última resposta da família",
-        }
+        },
     )
+
+    # Para ordenar corretamente as categorias,
+    # precisa limitar o categoryarray aos elementos presentes nos dados,
+    # então pegamos os valores únicos e ordenamos pela _desired_order 
+    unordered_first = pl.Series(_df_plot.select("first_answer").unique()).to_list()
+    unordered_last = pl.Series(_df_plot.select("last_answer").unique()).to_list()
+    ordered_first = sorted(unordered_first, key=lambda x: _desired_order.index(x))
+    ordered_last = sorted(unordered_last, key=lambda x: _desired_order.index(x))
 
     # Definir a ordem das categorias
     fig.update_traces(
         dimensions=[
-            dict(label="Primeira resposta da família", categoryorder="array", categoryarray=desired_order),
-            dict(label="Última resposta da família", categoryorder="array", categoryarray=desired_order)
+            dict(
+                label="Primeira resposta da família",
+                categoryorder="array",
+                categoryarray=ordered_first,
+            ),
+            dict(
+                label="Última resposta da família",
+                categoryorder="array",
+                categoryarray=ordered_last,
+            ),
         ]
     )
 
     fig.update_layout(margin=dict(t=100, l=100, r=100, b=100))
     fig
-    return
-
-
-@app.cell
-def _():
     return
 
 
@@ -568,11 +584,9 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(MULTIPLE_ASSERTION_QUESTIONS, mo, question_name_dict, questions):
+def _(SINGLE_ASSERTION_QUESTIONS, mo, question_name_dict):
     _question_names = sorted(
-        list(
-            (set(questions) - set(["Income"])) | set(MULTIPLE_ASSERTION_QUESTIONS)
-        )
+        SINGLE_ASSERTION_QUESTIONS
     )
     _options = {
         v: k for k, v in question_name_dict.items() if k in _question_names
@@ -623,24 +637,10 @@ def _(mo):
         label="Valor máximo do eixo X",
         value=10_000,
     )
-    income_group_by_cols = mo.ui.dropdown(
-        options={
-            "Drogadição": "drug_addiction",
-            "Violência contra mulheres": "violence_women",
-            "Violência contra crianças": "violence_children",
-            "Violência contra crianças e mulheres": "violences",
-            "Alcoolismo": "alcoholism",
-            "Drogadição + Alcoolismo": "drugs",
-        },
-        label="Escolha a variável de agrupamento: ",
-        # value="Drogadição",
-        allow_select_none=True,
-    )
 
     cb_first_time = mo.ui.checkbox(label="Tempo inicial", value=True)
     cb_last_time = mo.ui.checkbox(label="Tempo final", value=True)
 
-    # income / per capita
     income_col_to_use = mo.ui.dropdown(
         label="Escolha a variável principal:",
         options={"Renda": "Income", "Renda per Capita": "IncomePerCapita"},
@@ -666,10 +666,10 @@ def _():
         # amount: 0 = original, 1 = white
         c = mcolors.to_rgb(hex_color)
         return mcolors.to_hex([1 - (1 - x) * (1 - amount) for x in c])
-    return (lighten_color,)
+    return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(
     GT,
     bin_size_slider,
@@ -678,39 +678,18 @@ def _(
     df_plot_variables,
     go,
     income_col_to_use,
-    lighten_color,
     max_x_slider,
     max_y_slider,
     pl,
+    px,
 ):
     def get_income_plot():
         _col_to_use = income_col_to_use.value
-        # _col_to_use = "IncomePerCapita"
 
-        _palette = dict(
-            NA="#7f7f7f",  # (gray)
-            Não="#1f77b4",  # (blue)
-            Sim="#ff7f0e",  # (orange)
-            # green="#2ca02c",  # (green)
-            # red="#d62728",  # (red)
-            # purple="#9467bd",  # (purple)
-            # brown="#8c564b",  # (brown)
-            # pink="#e377c2",  # (pink)
-            # olive="#bcbd22",  # (olive)
-            # cyan="#17becf",  # (cyan)
-        )
-
-        _color_first = "purple"
-        _color_last = "green"
-
-        # ['', '/', '\\', 'x', '-', '|', '+', '.']
-        # _shape_first = "-"
-        # _shape_last = "x"
-        _shape_first = "\\"
-        _shape_last = "/"
-
-        # [TODO] FILTER CONDITIONS
-        # [TODO] PERCENTAGE AND CUMULATIVE
+        # Usar paleta de cores do Plotly
+        colors = px.colors.qualitative.Pastel
+        _color_first = colors[0]  # Primeira cor da paleta
+        _color_last = colors[1]  # Segunda cor da paleta
 
         _subtitle_l = []
         _fig_info = {
@@ -732,17 +711,10 @@ def _(
                 go.Histogram(
                     name="Tempo <b>inicial</b>",
                     marker=dict(
-                        pattern=dict(
-                            shape=_shape_first,
-                            fgcolor=lighten_color(_color_first, 0.1),
-                            bgcolor=lighten_color(_color_first),
-                            size=15,  # Size of pattern elements
-                            solidity=0.1,  # Opacity of pattern
-                            fgopacity=1,
-                        ),
+                        color=_color_first,
                         line=dict(
-                            color=_color_first,  # Contour color
-                            width=1,  # Contour width in pixels
+                            color=_color_first,
+                            width=1,
                         ),
                     ),
                     x=pl.Series(_first_data[_col_to_use]).to_numpy(),
@@ -763,17 +735,10 @@ def _(
                 go.Histogram(
                     name="Tempo <b>final</b>",
                     marker=dict(
-                        pattern=dict(
-                            shape=_shape_last,
-                            fgcolor=lighten_color(_color_last, 0.1),
-                            bgcolor=lighten_color(_color_last),
-                            size=15,  # Size of pattern elements
-                            solidity=0.1,  # Opacity of pattern
-                            fgopacity=1,
-                        ),
+                        color=_color_last,
                         line=dict(
-                            color=_color_last,  # Contour color
-                            width=1,  # Contour width in pixels
+                            color=_color_last,
+                            width=1,
                         ),
                     ),
                     x=pl.Series(_last_data[_col_to_use]).to_numpy(),
@@ -1004,15 +969,17 @@ def _(mo, pl):
 
 
 @app.cell
-def _(get_vars_IGF):
-    questions = get_vars_IGF()
-
+def _(
+    INCOME_QUESTIONS,
+    MULTIPLE_ASSERTION_QUESTIONS,
+    SINGLE_ASSERTION_QUESTIONS,
+):
+    questions = SINGLE_ASSERTION_QUESTIONS + MULTIPLE_ASSERTION_QUESTIONS + INCOME_QUESTIONS
     return (questions,)
 
 
 @app.cell
 def _():
-
     MULTIPLE_ASSERTION_QUESTIONS = [
         "Garbage",
         "HousingProblems",
@@ -1024,6 +991,32 @@ def _():
         "Documents",
         "IncomeDesc",
         "JobSatisfaction",
+    ]
+
+    INCOME_QUESTIONS = [
+        "Income",
+        "IncomePerCapita"
+    ]
+
+    SINGLE_ASSERTION_QUESTIONS = [
+        "Access",
+        "BankAccount",
+        "Bathroom",
+        "CEP",
+        "CulturalEvent",
+        "Eletricity",
+        "Floor",
+        "FoodManytimes",
+        "IncomeWorkS3",
+        "Roof",
+        "SchoolCurrent",
+        "SchoolLast",
+        "SchoolLiteracy",
+        "SchoolMathLit",
+        "Sewer",
+        "Walls",
+        "Water",
+        "WaterFrequency",
     ]
 
     PETALS_NAMES = [
@@ -1038,7 +1031,12 @@ def _():
         "WomanAutonomy",
         "Environment",
     ]
-    return MULTIPLE_ASSERTION_QUESTIONS, PETALS_NAMES
+    return (
+        INCOME_QUESTIONS,
+        MULTIPLE_ASSERTION_QUESTIONS,
+        PETALS_NAMES,
+        SINGLE_ASSERTION_QUESTIONS,
+    )
 
 
 @app.cell
@@ -1654,21 +1652,6 @@ def _():
                     "Para trabalhar",
                 ],
             },
-            # {
-            #     "subtitle": "Binário: acesso à internet",  # [TODO] aqui precisaria re-obter uma linha por família, senão cada família vai ter várias asserções somando em "Tenho acesso à internet" por exemplo :ooo
-            #     "map": {
-            #         "Tenho acesso à internet": [
-            #             "Para acessar banco e serviços financeiros",
-            #             "Para acessar serviços públicos (poupa tempo, gov.br, INSS, etc...)",
-            #             "Para comprar coisas",
-            #             "Para estudar",
-            #             "Para falar com amigos e família",
-            #             "Para passar o tempo (redes sociais, jogos, ouvir música, ver filme...)",
-            #             "Para trabalhar",
-            #         ]
-            #     },
-            #     "order": ["Não tenho acesso à internet", "Tenho acesso à internet"],
-            # },
         ],
         "CommFacilities": {
             "map": {
@@ -1883,14 +1866,9 @@ def _():
 
 @app.cell
 def _():
-    import marimo as mo
-    return (mo,)
-
-
-@app.cell
-def _():
     import random
 
+    import marimo as mo
     import altair as alt
     from great_tables import GT, md, style, loc
     import polars as pl
@@ -1898,354 +1876,18 @@ def _():
     import plotly.graph_objects as go
     from rich import print
     import numpy as np
-    return GT, go, loc, md, np, pl, print, px, style
+    return GT, go, loc, md, mo, pl, print, px, style
 
 
 @app.cell
 def _(
     ASSERTION_MAP,
     MULTIPLE_ASSERTION_QUESTIONS,
-    np,
     pl,
     print,
     px,
     question_name_dict,
 ):
-    def get_assertion_map():
-        """Returns the assertion map used to map answers to their respective categories."""
-        from const import ASSERTION_MAP as assertion_map
-
-        return assertion_map
-
-
-    def get_descriptive_table(
-        df_long_first,
-        df_long_last,
-        question_name,
-        describe_by="race",
-        mix_pp=True,
-    ):
-        """Get a table with the count and percentage of answers
-
-        Args:
-            df_long_first (_type_): _description_
-            df_long_last (_type_): _description_
-            question_name (str, optional): _description_. Defaults to "FoodManytimes".
-            mix_pp (bool, optional): _description_. Defaults to True.
-
-        Returns:
-            _type_: _description_
-        """
-        from great_tables import GT, md, style, loc
-
-        if mix_pp and describe_by == "race":
-            df_long_first = df_long_first.with_columns(
-                race=pl.when(
-                    (pl.col("race") == "Parda")
-                    | (pl.col("race") == "Preta")
-                    | (pl.col("race") == "Indígena")
-                )
-                .then(pl.lit("Negros e indígenas"))
-                .otherwise(pl.lit("Brancos e amarelos"))
-            )
-            df_long_last = df_long_last.with_columns(
-                race=pl.when(
-                    (pl.col("race") == "Parda")
-                    | (pl.col("race") == "Preta")
-                    | (pl.col("race") == "Indígena")
-                )
-                .then(pl.lit("Negros e indígenas"))
-                .otherwise(pl.lit("Brancos e amarelos"))
-            )
-
-        conditions = (
-            (pl.col("question") == question_name)
-            & (pl.col(describe_by) != "NA")
-            & (pl.col("answer") != "NA")
-        )
-
-        first_group_sum = (
-            df_long_first.filter(conditions)
-            .select(describe_by, "answer")
-            .group_by(describe_by)
-            .len(name="group_total_first")
-        )
-
-        last_group_sum = (
-            df_long_last.filter(conditions)
-            .select(describe_by, "answer")
-            .group_by(describe_by)
-            .len(name="group_total_last")
-        )
-
-        df_print = (
-            (
-                df_long_first.filter(conditions)
-                .select(describe_by, "answer")
-                .group_by("*")
-                .len(name="count_first")
-                .join(first_group_sum, on=describe_by, how="left")
-                .with_columns(
-                    pct_first=(
-                        pl.col("count_first") / pl.col("group_total_first")
-                    ),
-                )
-            )
-            .join(
-                df_long_last.filter(conditions)
-                .select(describe_by, "answer")
-                .group_by("*")
-                .len(name="count_last")
-                .join(last_group_sum, on=describe_by, how="left")
-                .with_columns(
-                    pct_last=(pl.col("count_last") / pl.col("group_total_last")),
-                ),
-                on=[describe_by, "answer"],
-                how="full",
-                coalesce=True,
-            )
-            .with_columns(
-                count_first=pl.coalesce(
-                    pl.col("count_first").cast(pl.Int64), pl.lit(0).cast(pl.Int64)
-                ),
-                count_last=pl.coalesce(
-                    pl.col("count_last").cast(pl.Int64), pl.lit(0).cast(pl.Int64)
-                ),
-                group_total_first=pl.coalesce(
-                    pl.col("group_total_first").cast(pl.Int64),
-                    pl.lit(0).cast(pl.Int64),
-                ),
-                group_total_last=pl.coalesce(
-                    pl.col("group_total_last").cast(pl.Int64),
-                    pl.lit(0).cast(pl.Int64),
-                ),
-                pct_first=pl.coalesce(pl.col("pct_first"), pl.lit(0)),
-                pct_last=pl.coalesce(pl.col("pct_last"), pl.lit(0)),
-            )
-            .with_columns(
-                delta_count=pl.col("count_last").cast(pl.Int64)
-                - pl.col("count_first").cast(pl.Int64),
-                delta_pct=pl.col("pct_last") - pl.col("pct_first"),
-            )
-            .sort(
-                "answer", describe_by
-            )  # [TODO] Ver se é necessário ordenar por answer
-        )
-
-        answer_maps = get_answer_maps_per_question(question_name)
-        answer_orders = get_answer_orders_per_question(question_name)
-
-        assert len(answer_maps) == 1, (
-            "This function only supports one answer map per question_name"
-        )
-        assert len(answer_orders) == 1, (
-            "This function only supports one answer order per question_name"
-        )
-
-        answer_map, answer_order = answer_maps[0], answer_orders[0]
-
-        # Correct answer names with the mapping
-        df_print = df_print.with_columns(
-            answer=pl.col("answer").replace(answer_map)
-        )
-
-        gt_table = (
-            GT(
-                df_print,
-                rowname_col=describe_by,
-                groupname_col="answer",
-            )
-            .row_group_order([i for i in answer_order if i != "NA"])
-            .tab_header(
-                title=md(f"Respostas à pergunta {question_name}"),
-                subtitle=md(
-                    f"Distribuição de respostas por `{describe_by}` no tempo inicial e final"
-                ),
-            )
-            .cols_label(
-                answer=md("Resposta"),
-                count_first=md("Contagem no tempo inicial"),
-                count_last=md("Contagem no tempo final"),
-                pct_first=md("Porcentagem no tempo inicial"),
-                pct_last=md("Porcentagem no tempo final"),
-                delta_count=md("Variação de contagem"),
-                delta_pct=md("Variação de porcentagem"),
-                group_total_first=md("Total do grupo no tempo inicial"),
-                group_total_last=md("Total do grupo no tempo final"),
-            )
-            .fmt_number(
-                columns=["count_first", "count_last", "delta_count"],
-                decimals=0,
-            )
-            .fmt_number(
-                columns=["pct_first", "pct_last"],
-                decimals=2,
-                scale_by=100,
-                pattern="{x}%",
-            )
-            .fmt_number(
-                columns=[
-                    "delta_count",
-                ],
-                force_sign=True,
-            )
-            .fmt_number(
-                columns=["delta_pct"],
-                force_sign=True,
-                decimals=2,
-                scale_by=100,
-                pattern="{x}%",
-            )
-            .tab_spanner(
-                label=md("Tempo inicial"),
-                columns=[
-                    "count_first",
-                    "pct_first",
-                    "group_total_first",
-                ],
-            )
-            .tab_spanner(
-                label=md("Tempo final"),
-                columns=[
-                    "count_last",
-                    "pct_last",
-                    "group_total_last",
-                ],
-            )
-            .tab_spanner(
-                label=md("Variação (Final - Inicial)"),
-                columns=[
-                    "delta_count",
-                    "delta_pct",
-                ],
-            )
-            .tab_style(
-                style=style.text(weight="bold"),
-                locations=loc.body(
-                    columns=[
-                        "answer",
-                        "pct_first",
-                        "pct_last",
-                        "delta_pct",
-                    ]
-                ),
-            )
-            .opt_stylize(style=1, color="blue")
-            .opt_all_caps()
-        )
-        return gt_table
-
-
-    def cramers_v(df, col1, col2, verbose=False):
-        """
-        Calculates Cramér's V statistic for association between two categorical columns in a Polars DataFrame.
-        Cramér's V is a measure of association between two nominal variables, giving a value between 0 and +1
-        (inclusive). A value of 0 indicates no association, and a value of 1 indicates perfect association.
-        Parameters
-        ----------
-        df : pl.DataFrame
-            The Polars DataFrame containing the data.
-        col1 : str
-            The name of the first categorical column.
-        col2 : str
-            The name of the second categorical column.
-        verbose : bool, optional (default=False)
-            If True, prints the number of valid rows used in the calculation.
-        Returns
-        -------
-        float
-            The Cramér's V statistic for the association between the two columns.
-            Returns 0.0 if there is not enough data to compute the statistic.
-        Notes
-        -----
-        - Rows with null values or "NA" in either column are excluded from the calculation.
-        - The calculation is based on the chi-square statistic from the contingency table of the two columns.
-        """
-
-        # Clean data only for this pair of columns
-        df_clean = df.filter(
-            ~pl.any_horizontal(
-                pl.col([col1, col2]).is_null() | (pl.col([col1, col2]) == "NA")
-            )
-        ).select(col1, col2)
-        if verbose:
-            print(f"{col1} X {col2} : {df_clean.height} rows")
-
-        if df_clean.height < 2:  # Not enough data
-            return 0.0
-
-        # Create contingency table
-        contingency = (
-            df_clean.group_by([col1, col2])
-            .len()
-            .pivot(index=col1, on=col2, values="len")
-            .fill_null(0)
-        )
-
-        # Convert to numpy array for calculation
-        ct = contingency.select(pl.exclude(col1)).to_numpy()
-
-        # Calculate chi-square
-        chi2 = 0
-        n = ct.sum()
-        row_sums = ct.sum(axis=1)
-        col_sums = ct.sum(axis=0)
-
-        for i in range(ct.shape[0]):
-            for j in range(ct.shape[1]):
-                expected = (row_sums[i] * col_sums[j]) / n
-                if expected > 0:
-                    chi2 += (ct[i, j] - expected) ** 2 / expected
-
-        # Calculate Cramér's V
-        n_rows, n_cols = ct.shape
-        cramers = np.sqrt(chi2 / (n * min(n_rows - 1, n_cols - 1)))
-        return cramers
-
-
-    def cramers_v_scipy(df, col1, col2, verbose=False):
-        """
-        Calculates Cramér's V statistic for association between two categorical columns in a Polars DataFrame using scipy.stats.contingency.association.
-        Parameters
-        ----------
-        df : pl.DataFrame
-            The Polars DataFrame containing the data.
-        col1 : str
-            The name of the first categorical column.
-        col2 : str
-            The name of the second categorical column.
-        verbose : bool, optional (default=False)
-            If True, prints the number of valid rows used in the calculation.
-        Returns
-        -------
-        float
-            The Cramér's V statistic for the association between the two columns.
-            Returns 0.0 if there is not enough data to compute the statistic.
-        """
-        from scipy.stats.contingency import association
-
-        df_clean = df.filter(
-            ~pl.any_horizontal(
-                pl.col([col1, col2]).is_null() | (pl.col([col1, col2]) == "NA")
-            )
-        ).select(col1, col2)
-        if verbose:
-            print(f"{col1} X {col2} : {df_clean.height} rows")
-
-        if df_clean.height < 2:
-            return 0.0
-
-        contingency = (
-            df_clean.group_by([col1, col2])
-            .len()
-            .pivot(index=col1, columns=col2, values="len")
-            .fill_null(0)
-        )
-        ct = contingency.select(pl.exclude(col1)).to_numpy()
-
-        return association(ct, method="cramer")
-
-
     def get_vars_IGF():
         return [
             "Access",
@@ -2441,9 +2083,7 @@ def _(
                     barmode="group",
                     title=title
                     if title
-                    # else f"Respostas à pergunta {question_name}",
                     else question_name_dict.get(question_name),
-                    # title=f"{questions_dict.get(question_name)}", # [TODO] Add function to get the full question from the question name
                     subtitle=f"[{question_name}] " + subtitle,
                     hover_data=hover_dict,
                     hover_name="answer",
@@ -2481,17 +2121,6 @@ def _(
         return fig
 
 
-    def get_answer_map_per_question(question_name):
-        assertion_map = ASSERTION_MAP
-        new_to_list_of_old = assertion_map.get(question_name, {}).get("map", {})
-        old_to_new = {
-            value: key
-            for key, values in new_to_list_of_old.items()
-            for value in values
-        }
-        return old_to_new
-
-
     def get_answer_maps_per_question(question_name):
         # Handles assertion_map entries that are a dict or a list of dicts
         assertion_map = ASSERTION_MAP
@@ -2516,21 +2145,6 @@ def _(
                     answer_maps.append({})
 
         return answer_maps
-
-
-    def get_answer_order_per_question(question_name):
-        assertion_map = ASSERTION_MAP
-        if question_name.startswith("Categoria"):
-            return [
-                "NA",
-                "E1",
-                "E2",
-                "P1",
-                "P2",
-                "D",
-            ]
-
-        return assertion_map.get(question_name, {}).get("order", ["NA"])
 
 
     def get_answer_orders_per_question(question_name):
@@ -2563,150 +2177,7 @@ def _(
                     answer_orders.append(["NA"])
 
         return answer_orders
-
-
-    def enrich_first_and_last_time(df_long):
-        """Enriches the dataframe with the first and last time for each family.
-
-        Args:
-            df_long (pl.DataFrame): The polars DataFrame in long format (one row questionnaire entry, having columns 'question', 'answer', 'time', 'FavelaID').
-
-        Returns:
-            pl.DataFrame: The dataframe enriched with columns 'time_first' and 'time_last', with the first and last collection times for each family.
-        """
-        # Gets the first time for each family
-        df_first = (
-            df_long.filter(
-                (pl.col("question") == "CategoriaIGF") & (pl.col("answer") != "NA")
-            )
-            .select("id_family_datalake", "column", "time")
-            .sort("id_family_datalake", "time")
-            .group_by("id_family_datalake")
-            .first()
-            .select("id_family_datalake", "time")
-        )
-
-        # Gets the last time for each family
-        df_last = (
-            df_long.filter(
-                (pl.col("question") == "CategoriaIGF") & (pl.col("answer") != "NA")
-            )
-            .select("id_family_datalake", "column", "time")
-            .sort("id_family_datalake", "time")
-            .group_by("id_family_datalake")
-            .last()
-            .select("id_family_datalake", "time")
-        )
-
-        # Join the first and last times to the main dataframe
-        df_long_periods = df_long.join(
-            df_first, on="id_family_datalake", how="left", suffix="_first"
-        )
-
-        # Join the last time to the main dataframe
-        df_long_periods = df_long_periods.join(
-            df_last, on="id_family_datalake", how="left", suffix="_last"
-        )
-
-        # Remove families that only have one time difference between the first and last time (this filters out 57 families, leaving only the 616 remaining families)
-        df_long_periods = df_long_periods.filter(
-            pl.col("time_last").cast(pl.Int8) - pl.col("time_first").cast(pl.Int8)
-            > 1
-        )
-
-        return df_long_periods
-    return get_vars_IGF, plot_variables
-
-
-@app.cell
-def _():
-    mais_melhor = {
-        "BathroomQualit": [
-            "Box ou cortina que fecha o chuveiro"
-            "Chuveiro com água quente"
-            "Parede de azulejo"
-            "Piso de azulejo"
-            "Porta externa que fecha o banheiro"
-            "Privada com tampa"
-        ],
-        "CommFacilities": [
-            "Agua Encanada",
-            "Água encanada",
-            "Boas condições das ruas, vielas ou escadas que dão acesso à comunidade",
-            "Creche Publica",
-            "Creche Pública",
-            "Escola Publica",
-            "Escola Pública",
-            "Esgoto",
-            "Acesso à rede de esgoto",
-            "Espaços para reuniões comunitárias",
-            "Hospital Publico",
-            "Hospital Público",
-            "Iluminacao Publica",
-            "Iluminação Pública",
-            "Opcoes de Lazer",
-            "Opções de lazer",
-            "Pavimentação das ruas e vielas da comunidade",
-            "Posto de Saude",
-            "Posto de Saúde",
-            "Transporte Publico",
-            "Transporte Público",
-            "Coleta de Lixo",
-        ],
-    }
-
-    menos_melhor = {
-        "HousingProblems": [
-            "Alagamento Inundacao",
-            "Chuva Goteiras",
-            "Cozinha Com Lenha",
-            "Cupim",
-            "Deslizamento",
-            "Desmoronamento",
-            "Incendio",
-            "Outro",
-            "Ratos Baratas Animais Indesejados",
-            "Solapamento",
-            "Umidade Mofo",
-        ],
-        "HealthGenNames": ["TODAS"],  # [TODO]
-        "HealthGenKidsNames": ["TODAS"],  # [TODO]
-    }
-
-    # %%
-    # LISTA DE VARIÁVEIS COM MÚLTIPLAS ASSERÇÕES POR RESPOSTA
-
-    # - "BathroomQualit" # MAIS MELHOR
-    # - "HousingProblems" # MENOS MELHOR
-    # - "CommFacilities" MAIS MELHOR
-    # - "Garbage"  # SÓ LIMPAR AS RESPOSTAS (é uma asserção)
-    # ----------- DOIS GRAFICOS TAMBEM ((1) contagem geral e (2) incidência)
-    # - "HealthGenKidsNames"
-    # - "HealthGenNames"
-    # -----------
-    # - "Internet"  # DOIS GRÁFICOS:
-    # 1) Não tenho acesso à internet e Tenho acesso à internet (Todas as outras alternativas)
-    # 2) Quantas vezes cada alternativa foi selecionada no tempo inicial e final
-    # -----------
-    # - "Documents"  # DOIS GRÁFICOS TAMBÉM, IGUAL INTERNET
-    # [TODO]
-    # "Não tenho nenhum documento" # [TODO] Não usar a coluna, criar uma nova para os casos que sejam só NA;NA..NA
-    # -----------
-
-    # %%
-    return
-
-
-@app.cell
-def _(print):
-    def find_in_columns_from_df_long(df_long, search_term, col_name="column"):
-        filtered_list = [
-            item
-            for item in df_long.select(col_name).unique().to_series().to_list()
-            if search_term in item
-        ]
-        print(filtered_list)
-    return
+    return (plot_variables,)
 
 
 if __name__ == "__main__":
