@@ -1032,6 +1032,10 @@ def _():
         "AverageSchooling": "Educação (valor médio)",
         "AverageWomanAutonomy": "Autonomia das mulheres (valor médio)",
         "AverageEnvironment": "Meio ambiente (valor médio)",
+        "JobSatisfaction": "Quão satisfeito você é com o seu trabalho?",
+        "IncomeDesc": "Quanto a sua família teve de renda em cada um dos itens?",
+        "Income": "Qual a sua renda mensal?",
+        "IncomePerCapita": "Qual a renda per capita da família?",
     }
 
     petal_name_dict = {
