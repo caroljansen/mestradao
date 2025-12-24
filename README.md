@@ -1,17 +1,64 @@
 # Sobre
 
-Este repositório de código contém bases de dados, artefatos de código de processamento de dados, e também dá origem ao [site interativo](https://caroljansen.github.io/mestradao/apps/mestrado_carol.html) para exploração de dados da pesquisa de mestrado de Carolina Jansen Gandara Mendes.
+Este repositório reúne os dados e os artefatos de código da pesquisa de mestrado de Carolina Jansen Gandara Mendes, além de gerar o [site interativo para exploração dos resultados](https://caroljansen.github.io/mestradao/apps/data_viz.html).
 
-A base de dados quantitativos foi elaborada por Carolina Jansen Gandara Mendes, [Caio Elmôr Lang](https://www.linkedin.com/in/caiolang/) e [Ana Kellen Nogueira Campelo](https://www.linkedin.com/in/anaknog/).
+As bases de dados quantitativos foram preparadas por Carolina Jansen Gandara Mendes, Caio Elmôr Lang e Ana Kellen Nogueira Campelo.
 
-## Artefatos de código
+**Conteúdo principal**
 
-### Sobre os artefatos de código
-Ambos os artefatos de código usaram a linguagem Python[^python] com uma série de bibliotecas, sendo que a reatividade das visualizações se deve à bibioteca Marimo[^marimo].
+- Código de preparação de dados: `apps/data_prep.py`
+- Código de visualização interativa: `apps/data_viz.py`
 
-- `apps/data_prep.py` : Contém o processamento de dados desde as bases brutas até as bases utilizadas na pesquisa, aplicando premissas de análise para seleção de famílias e respostas, fazendo padronização de respostas, etc.
+## Requisitos
 
-- `apps/data_viz.py` : Contém o código que gera visualizações de dados interativas, consumindo as bases geradas em `data_prep.py`.
+- Instalar o gerenciador [`uv`](https://docs.astral.sh/uv/#installation), usado para administrar os ambientes virtuais, instalação de bibliotecas e versões de Python, além de executar os fluxos de trabalho.
+
+## Como usar
+
+1) Abrir a interface Marimo (edição interativa)
+
+- Para editar o fluxo de limpeza de dados:
+
+```
+uv run marimo edit apps/data_prep.py
+```
+
+- Para editar/visualizar as visualizações interativas:
+
+```
+uv run marimo edit apps/data_viz.py
+```
+
+2) Executar os scripts como scripts Python
+
+- Executar a etapa de preparação de dados (gera `base_long.csv`, `base_exploded.csv` e caches usados pelas visualizações):
+
+```
+uv run apps/data_prep.py
+```
+
+3) Gerar uma versão estática do site localmente (em `_site/`)
+
+```
+uv run build.py \
+       --output_dir '_site' \
+       --template 'templates/tailwind.html.j2'
+```
+
+## Estrutura das bases
+
+As saídas geradas por `apps/data_prep.py` são usadas por `apps/data_viz.py`.
+
+- `base_wide.csv`: formato wide — uma linha por família; chave única `id_family_datalake`; perguntas multi-temporais aparecem como `<pergunta>_FIRST` e `<pergunta>_LAST`. A coluna `FavelaID` indica a favela.
+- `base_log.csv`: base auxiliar que mapeia qual tempo (T0, ..., T3) foi usado para cada resposta da família incluída em `base_wide.csv`.
+- `base_long.csv`: formato long — uma linha por resposta/família; usada nas visualizações.
+- `base_exploded.csv`: formato long com respostas multi-asserções explodidas em linhas separadas; usada nas visualizações.
+
+## Notas técnicas
+
+- O código foi desenvolvido usando o ambiente de *notebooks* interativos Marimo[^marimo].
+
+- O processamento de dados usou a biblioteca Polars[^polars].
 
 [^python]:
     Python Software Foundation, https://www.python.org/
@@ -19,33 +66,5 @@ Ambos os artefatos de código usaram a linguagem Python[^python] com uma série 
 [^marimo]:
     Marimo, https://github.com/marimo-team/marimo
 
-### Rodando os artefatos de código
-Recomenda-se instalar o [`uv`](https://docs.astral.sh/uv/#installation) gerenciador de projetos e bibliotecas Python.
-
-Com `uv` instalado, os seguintes comandos devem funcionar:
-
-#### Para abrir a interface de edição Marimo
-Para a etapa de limpeza de dados:
-
-    uv run marimo edit apps/data_prep.py
-
-ou, para a visualização de dados:
-
-    uv run marimo edit apps/data_viz.py
-
-#### Para rodar a etapa de limpeza de dados como script python simples
-    uv run apps/data_prep.py
-
-## Sobre as bases
-
-### Usadas para outras análises da pesquisa
-- `base_wide.csv` : Base em formato wide, com a chave única `id_family_datalake` como identificadora da família,e cada pergunta em colunas `<pergunta>_FIRST` e `<pergunta>_LAST` indicando a primeira e última resposta da família para a pergunta em questão. A coluna `FavelaID` indica a favela.
-
-- `base_log.csv` : Base auxiliar que indica qual o tempo (T0, ..., T3) usado para cada resposta X família incluída na `base_wide.csv`.
-
-### Usadas para visualização de dados
-Para minimizar a carga computacional do site com as visualizações, algumas transformações da base são feitas em `data_prep.py`, e as bases resultantes são armazenadas como um *cache*, para serem consumidas em `data_viz.py`.
-
-- `base_long.csv` : Base em formato long (uma row por resposta de cada família, ao invés de uma row por família / uma coluna por pergunta). Usada em `data_viz.py`.
-
-- `base_exploded.csv` : Base em formato long, porém cada resposta de perguntas multi-asserções aparece em uma linha separada.  Usada em `data_viz.py`.
+[^polars]:
+    Polars, https://pola.rs/
