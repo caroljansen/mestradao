@@ -678,6 +678,7 @@ def _(
     px,
 ):
     def get_income_plot():
+        MAX_OUTLIER_LIMIT = 10_000
         _col_to_use = income_col_to_use.value
 
         # Usar paleta de cores do Plotly
@@ -691,9 +692,14 @@ def _(
             "IncomePerCapita": dict(title="Renda per Capita", max_y=400),
         }
 
-        _data = df_plot_variables.filter(
+        _data = (
+            df_plot_variables
+                .filter(
             (pl.col("question") == _col_to_use) & (pl.col("answer") != "NA")
-        ).with_columns(pl.col("answer").cast(pl.Float64).alias(_col_to_use))
+                )
+                .with_columns(pl.col("answer").cast(pl.Float64).alias(_col_to_use))
+                .filter(pl.col(_col_to_use) <= MAX_OUTLIER_LIMIT)
+        )
 
         _first_data = _data.filter((pl.col.time == "FIRST"))
         _last_data = _data.filter((pl.col.time == "LAST"))
