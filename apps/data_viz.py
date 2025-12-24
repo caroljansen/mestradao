@@ -898,9 +898,6 @@ def _(get_income_plot, mo):
 
 @app.cell
 def _(mo, pl):
-    # Leitura do df original em CSV
-    # _df_long_path = str(mo.notebook_location() / "public" / "base_long.csv")
-
     # Dataframe em formato long (uma row por família/resposta, ao invés de uma row por família)
     df_long = (
         pl.read_csv(str(mo.notebook_location() / "public" / "base_long.csv"))
