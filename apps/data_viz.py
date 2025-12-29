@@ -425,7 +425,7 @@ def _(df_plot_variables, petal_to_plot, pl, px, question_name_dict):
 
     # Para ordenar corretamente as categorias,
     # precisa limitar o categoryarray aos elementos presentes nos dados,
-    # então pegamos os valores únicos e ordenamos pela _desired_order 
+    # então pegamos os valores únicos e ordenamos pela _desired_order
     unordered_first = pl.Series(_df_plot.select("first_answer").unique()).to_list()
     unordered_last = pl.Series(_df_plot.select("last_answer").unique()).to_list()
     ordered_first = sorted(unordered_first, key=lambda x: _desired_order.index(x))
@@ -578,9 +578,14 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(SINGLE_ASSERTION_QUESTIONS, mo, question_name_dict):
+def _(
+    MULTIPLE_ASSERTION_QUESTIONS,
+    SINGLE_ASSERTION_QUESTIONS,
+    mo,
+    question_name_dict,
+):
     _question_names = sorted(
-        SINGLE_ASSERTION_QUESTIONS
+        SINGLE_ASSERTION_QUESTIONS + MULTIPLE_ASSERTION_QUESTIONS
     )
     _options = {
         v: k for k, v in question_name_dict.items() if k in _question_names
@@ -640,7 +645,6 @@ def _(mo):
         options={"Renda": "Income", "Renda per Capita": "IncomePerCapita"},
         value="Renda per Capita",
     )
-    # [NICE TO HAVE] percentage e cumulative
     return (
         bin_size_slider,
         cb_first_time,
@@ -693,12 +697,11 @@ def _(
         }
 
         _data = (
-            df_plot_variables
-                .filter(
-            (pl.col("question") == _col_to_use) & (pl.col("answer") != "NA")
-                )
-                .with_columns(pl.col("answer").cast(pl.Float64).alias(_col_to_use))
-                .filter(pl.col(_col_to_use) <= MAX_OUTLIER_LIMIT)
+            df_plot_variables.filter(
+                (pl.col("question") == _col_to_use) & (pl.col("answer") != "NA")
+            )
+            .with_columns(pl.col("answer").cast(pl.Float64).alias(_col_to_use))
+            .filter(pl.col(_col_to_use) <= MAX_OUTLIER_LIMIT)
         )
 
         _first_data = _data.filter((pl.col.time == "FIRST"))
@@ -905,12 +908,10 @@ def _(get_income_plot, mo):
 @app.cell
 def _(mo, pl):
     # Dataframe em formato long (uma row por família/resposta, ao invés de uma row por família)
-    df_long = (
-        pl.read_csv(str(mo.notebook_location() / "public" / "base_long.csv"))
-    )
+    df_long = pl.read_csv(str(mo.notebook_location() / "public" / "base_long.csv"))
     # Dataframe em formato long explodido, em que cada resposta de multi-asserções aparece em uma linha
-    df_plot_variables = (
-        pl.read_csv(str(mo.notebook_location() / "public" / "base_exploded.csv"))
+    df_plot_variables = pl.read_csv(
+        str(mo.notebook_location() / "public" / "base_exploded.csv")
     )
     return df_long, df_plot_variables
 
@@ -921,7 +922,11 @@ def _(
     MULTIPLE_ASSERTION_QUESTIONS,
     SINGLE_ASSERTION_QUESTIONS,
 ):
-    questions = SINGLE_ASSERTION_QUESTIONS + MULTIPLE_ASSERTION_QUESTIONS + INCOME_QUESTIONS
+    questions = (
+        SINGLE_ASSERTION_QUESTIONS
+        + MULTIPLE_ASSERTION_QUESTIONS
+        + INCOME_QUESTIONS
+    )
     return (questions,)
 
 
@@ -940,10 +945,7 @@ def _():
         "JobSatisfaction",
     ]
 
-    INCOME_QUESTIONS = [
-        "Income",
-        "IncomePerCapita"
-    ]
+    INCOME_QUESTIONS = ["Income", "IncomePerCapita"]
 
     SINGLE_ASSERTION_QUESTIONS = [
         "Access",
@@ -1764,43 +1766,43 @@ def _():
             ],
         },
         "Garbage": {
-            "map": {
-                "Joga na rua, vala ou quintal": [
-                    "Joga na rua / vala quintal",
-                    "Joga na rua/vala/quintal",
-                ],
-                "Queimado ou enterrado": [
-                    "Queimado / Enterrado",
-                    "Queimado/enterrado",
-                ],
-                "Recolhido pela prefeitura": [
-                    "Recolhido pela Prefeitura",
-                ],
-                "Lixeira": [
-                    "Cacamba",
-                    "Caçamba mais proxima",
-                    "Contêiner",
-                    "Contenier",
-                    "Leva a lixeira lá em baixo.",
-                    "Leva até a lixeira",
-                    "Leva até a lixeira.",
-                    "Leva na lixeira",
-                    "Leva na lixeira.",
-                    "Leva para a lixeira",
-                    "Leva para a lixeira.",
-                    "Leva pra lixeira",
-                    "Levam na lixeira.",
-                    "Levo até lixeira.",
-                    "Lixeira",
-                    "contenier",
-                ],
-                "Coleta seletiva": [
-                    "Coleta Seletiva",
-                ],
-                "Outro": [
-                    "Nenhuma opção",  # Respostas do tipo "NA;NA;NA;...;NA;NA;NA"
-                ],
-            },
+            # "map": {
+            #     "Joga na rua, vala ou quintal": [
+            #         "Joga na rua / vala quintal",
+            #         "Joga na rua/vala/quintal",
+            #     ],
+            #     "Queimado ou enterrado": [
+            #         "Queimado / Enterrado",
+            #         "Queimado/enterrado",
+            #     ],
+            #     "Recolhido pela prefeitura": [
+            #         "Recolhido pela Prefeitura",
+            #     ],
+            #     "Lixeira": [
+            #         "Cacamba",
+            #         "Caçamba mais proxima",
+            #         "Contêiner",
+            #         "Contenier",
+            #         "Leva a lixeira lá em baixo.",
+            #         "Leva até a lixeira",
+            #         "Leva até a lixeira.",
+            #         "Leva na lixeira",
+            #         "Leva na lixeira.",
+            #         "Leva para a lixeira",
+            #         "Leva para a lixeira.",
+            #         "Leva pra lixeira",
+            #         "Levam na lixeira.",
+            #         "Levo até lixeira.",
+            #         "Lixeira",
+            #         "contenier",
+            #     ],
+            #     "Coleta seletiva": [
+            #         "Coleta Seletiva",
+            #     ],
+            #     "Outro": [
+            #         "Nenhuma opção",  # Respostas do tipo "NA;NA;NA;...;NA;NA;NA"
+            #     ],
+            # },
             "order": [
                 "Outro",
                 "Queimado ou enterrado",
@@ -1827,18 +1829,11 @@ def _():
     import plotly.graph_objects as go
     from rich import print
     import numpy as np
-    return GT, go, loc, md, mo, pl, print, px, style
+    return GT, go, loc, md, mo, pl, px, style
 
 
 @app.cell
-def _(
-    ASSERTION_MAP,
-    MULTIPLE_ASSERTION_QUESTIONS,
-    pl,
-    print,
-    px,
-    question_name_dict,
-):
+def _(ASSERTION_MAP, MULTIPLE_ASSERTION_QUESTIONS, pl, px, question_name_dict):
     def get_vars_IGF():
         return [
             "Access",
@@ -1871,7 +1866,7 @@ def _(
 
 
     def plot_variables(
-        df_long,
+        df_plot,
         question_names: list,
         seggregate_favela=False,
         orientation="v",
@@ -1879,24 +1874,20 @@ def _(
         percentage=False,
         color_col="time",
         compare_by_col=None,
-        unique_per_family=False,
-        filter_by_order=False,
         title=None,
         subtitle=None,
-        verbose=False,
         max_y=None,
     ):
         """Plots the variables from a list of question names, each in a bar chart.
 
         Args:
-            df_long (pl.DataFrame): The polars DataFrame in long format (one row questionnaire entry, having columns 'question', 'answer', 'time', 'FavelaID').
+            df_plot (pl.DataFrame): The polars DataFrame in long format (one row questionnaire entry, having columns 'question', 'answer', 'time', 'FavelaID').
             question_names (list): The list of variable names to plot.
             seggregate_favela (bool, optional): If the bar plot should segment the results by favela. Defaults to False.
             orientation (str, optional): Orientation of the bars in the bar plot, "h" for horizontal, "v" for vertical. Defaults to "v".
             palette (list(str), optional): Color palette as defined in the plotly express lib. Defaults to px.colors.qualitative.Pastel.
             percentage (bool, optional): Wether the plots should show percentages (of the 'time') or absolute numbers of answers. Defaults to False.
         """
-        # color_col = "time"
 
         for question_name in question_names:
             agg_cols = [color_col, "answer"]
@@ -1915,160 +1906,115 @@ def _(
             hover_dict["percentage_wo_na"] = ":.2f"
 
             # Getting answer maps and orders for the question
-            answer_maps = get_answer_maps_per_question(question_name)
-            answer_orders = get_answer_orders_per_question(question_name)
+            answer_order = get_answer_order_per_question(question_name)
 
-            assert len(answer_maps) == len(answer_orders), (
-                f"Number of answer maps ({len(answer_maps)}) does not match number of answer orders ({len(answer_orders)}) for question '{question_name}'"
+            df_plot = (
+                df_plot.filter(pl.col("question") == question_name)
+                .select(agg_cols)
+                .group_by(agg_cols)
+                .len()
             )
 
-            for answer_map, answer_order in zip(answer_maps, answer_orders):
-                # Correct answer names with the mapping
-                df_plot = df_long.with_columns(
-                    answer=pl.when(pl.col("question") == question_name)
-                    .then(pl.col("answer").replace(answer_map))
-                    .otherwise(pl.col("answer"))
+            answers = pl.Series(df_plot.select("answer").unique()).to_list()
+            answer_order_dict = {val: i for i, val in enumerate(answer_order)}
+            answer_order = sorted(
+                answers, key=lambda x: answer_order_dict.get(x, float("inf"))
+            )
+
+            df_pct = df_plot.with_columns(
+                percentage=(
+                    pl.col("len") / pl.col("len").sum().over("time") * 100
+                )
+            )
+
+            df_pct_wo_na = df_plot.filter(
+                pl.col("answer") != "NA"
+            ).with_columns(
+                percentage_wo_na=(
+                    pl.col("len") / pl.col("len").sum().over("time") * 100
+                )
+            )
+
+            df_plot = (
+                df_plot.join(
+                    df_pct_wo_na, on=agg_cols, how="left", suffix="_wo_na"
+                )
+                .with_columns(
+                    percentage_wo_na=pl.when(
+                        pl.col("percentage_wo_na").is_null()
+                    )
+                    .then(pl.lit("NÃO INCLUÍDO"))
+                    .otherwise(pl.col("percentage_wo_na"))
+                )
+                .join(df_pct, on=agg_cols, how="left", suffix="_na")
+            )
+
+            amount_col = "len"
+
+            if percentage:
+                amount_col = "percentage"
+
+            if orientation == "v":
+                kwargs = dict(
+                    x="answer",
+                    y=amount_col,
+                    orientation="v",
+                    facet_row=compare_by_col,
+                )
+            else:
+                kwargs = dict(
+                    x=amount_col,
+                    y="answer",
+                    orientation="h",
+                    facet_row=compare_by_col,
+                )
+            if compare_by_col is not None:
+                kwargs["height"] = 1000
+                # kwargs["facet_row_spacing"] = 0.05
+                # kwargs["facet_col_spacing"] = 0.05
+                kwargs["facet_row"] = compare_by_col
+
+            if max_y is not None:
+                kwargs["range_y"] = (
+                    [0, max_y] if orientation == "v" else [0, None]
+                )
+                kwargs["range_x"] = (
+                    [0, max_y] if orientation == "h" else [0, None]
                 )
 
-                conditions = pl.col("question") == question_name
-                if answer_order != ["NA"] and filter_by_order:
-                    if verbose:
-                        print("Removing from dataframe:")
-                        print(
-                            df_plot.filter(
-                                conditions
-                                & pl.col("answer").is_in(answer_order).not_()
-                            )
-                            .select(agg_cols)
-                            .group_by(agg_cols)
-                            .len()
-                        )
-
-                    conditions &= pl.col("answer").is_in(answer_order)
-
-                df_plot = (
-                    df_plot.filter(conditions)
-                    .select(agg_cols)
-                    .group_by(agg_cols)
-                    .len()
-                )
-
-                # [TODO] Solução WIP para agrupar a uma resposta por família.
-                # [TODO] Tem que ter assertions pra garantir que não estamos agrupando quando não faz sentido (família com respostas diferentes para a mesma pergunta). Add mensagems claras desse erro.
-                if unique_per_family:
-                    # If unique_per_family is True, we need to filter the dataframe to have only one row per family
-                    df_plot = (
-                        df_plot.group_by("id_family_datalake", "time").agg(
-                            pl.col("answer").first()
-                        )
-                        # .rename({"answer": "answer"})
-                    )
-
-                df_pct = df_plot.with_columns(
-                    percentage=(
-                        pl.col("len") / pl.col("len").sum().over("time") * 100
-                    )
-                )
-
-                df_pct_wo_na = df_plot.filter(
-                    pl.col("answer") != "NA"
-                ).with_columns(
-                    percentage_wo_na=(
-                        pl.col("len") / pl.col("len").sum().over("time") * 100
-                    )
-                )
-
-                df_plot = (
-                    df_plot.join(
-                        df_pct_wo_na, on=agg_cols, how="left", suffix="_wo_na"
-                    )
-                    .with_columns(
-                        percentage_wo_na=pl.when(
-                            pl.col("percentage_wo_na").is_null()
-                        )
-                        .then(pl.lit("NÃO INCLUÍDO"))
-                        .otherwise(pl.col("percentage_wo_na"))
-                    )
-                    .join(df_pct, on=agg_cols, how="left", suffix="_na")
-                )
-
-                amount_col = "len"
-
-                if percentage:
-                    amount_col = "percentage"
-
-                if orientation == "v":
-                    kwargs = dict(
-                        x="answer",
-                        y=amount_col,
-                        orientation="v",
-                        facet_row=compare_by_col,
-                    )
-                else:
-                    kwargs = dict(
-                        x=amount_col,
-                        y="answer",
-                        orientation="h",
-                        facet_row=compare_by_col,
-                    )
-                if compare_by_col is not None:
-                    kwargs["height"] = 1000
-                    # kwargs["facet_row_spacing"] = 0.05
-                    # kwargs["facet_col_spacing"] = 0.05
-                    kwargs["facet_row"] = compare_by_col
-
-                if max_y is not None:
-                    kwargs["range_y"] = (
-                        [0, max_y] if orientation == "v" else [0, None]
-                    )
-                    kwargs["range_x"] = (
-                        [0, max_y] if orientation == "h" else [0, None]
-                    )
-
-                fig = px.bar(
-                    df_plot,
-                    **kwargs,
-                    color=color_col,
-                    # height=1000,
-                    color_discrete_sequence=palette,  # [NOTE] Ver https://plotly.com/python/discrete-color/
-                    barmode="group",
-                    title=title
-                    if title
-                    else question_name_dict.get(question_name),
-                    subtitle=f"[{question_name}] " + subtitle,
-                    hover_data=hover_dict,
-                    hover_name="answer",
-                    labels=dict(
-                        answer="Resposta",
-                        len="Núm. de respostas"
-                        if question_name  # Questões com múltiplas asserções
-                        in MULTIPLE_ASSERTION_QUESTIONS
-                        else "Núm. de famílias",
-                        time="Período",
-                        percentage="% no período (com NAs)",
-                        percentage_wo_na="% no período (excluindo NAs)",
-                        FavelaID="Favela",
-                    ),
-                    category_orders={
-                        "time": ["FIRST", "LAST"],
-                        "drug_addiction": ["Não", "Talvez", "Sim", "NA"],
-                        # "time": ["0", "1", "2", "3", "FIRST", "LAST"],
-                        "answer": answer_order,
-                    },
-                )
-                fig.update_layout(margin=dict(t=100, l=100, r=100, b=100))
-                # fig.show()
-
-                if verbose:
-                    print("\nPlotting question:", question_name)
-                    print("\nAnswer order:", answer_order)
-                    print("\nAnswer map:", answer_map)
-                    print(
-                        "\nOptions on plot:",
-                        sorted(
-                            df_plot.select("answer").unique().to_series().to_list()
-                        ),
-                    )
+            fig = px.bar(
+                df_plot,
+                **kwargs,
+                color=color_col,
+                # height=1000,
+                color_discrete_sequence=palette,  # [NOTE] Ver https://plotly.com/python/discrete-color/
+                barmode="group",
+                title=title
+                if title
+                else question_name_dict.get(question_name),
+                subtitle=f"[{question_name}] " + subtitle,
+                hover_data=hover_dict,
+                hover_name="answer",
+                labels=dict(
+                    answer="Resposta",
+                    len="Núm. de respostas"
+                    if question_name  # Questões com múltiplas asserções
+                    in MULTIPLE_ASSERTION_QUESTIONS
+                    else "Núm. de famílias",
+                    time="Período",
+                    percentage="% no período (com NAs)",
+                    percentage_wo_na="% no período (excluindo NAs)",
+                    FavelaID="Favela",
+                ),
+                category_orders={
+                    "time": ["FIRST", "LAST"],
+                    "drug_addiction": ["Não", "Talvez", "Sim", "NA"],
+                    # "time": ["0", "1", "2", "3", "FIRST", "LAST"],
+                    "answer": answer_order,
+                },
+            )
+            fig.update_layout(margin=dict(t=100, l=100, r=100, b=100))
+        
         return fig
 
 
@@ -2098,20 +2044,18 @@ def _(
         return answer_maps
 
 
-    def get_answer_orders_per_question(question_name):
+    def get_answer_order_per_question(question_name):
         assertion_map = ASSERTION_MAP
         ORDER_KEY = "order"
 
         if question_name.startswith("Categoria"):
             return [
-                [
-                    "NA",
-                    "E1",
-                    "E2",
-                    "P1",
-                    "P2",
-                    "D",
-                ]
+                "NA",
+                "E1",
+                "E2",
+                "P1",
+                "P2",
+                "D",
             ]
 
         entry = assertion_map.get(question_name, {})
@@ -2127,7 +2071,7 @@ def _(
                 else:
                     answer_orders.append(["NA"])
 
-        return answer_orders
+        return answer_orders[0]
     return (plot_variables,)
 
 
