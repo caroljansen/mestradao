@@ -1062,14 +1062,6 @@ def _():
 def _():
     ASSERTION_MAP = {
         "Access": {
-            "map": {
-                "Existe algum membro que não tem acesso": [
-                    "Sim, existe algum membro que não tem acesso"
-                ],
-                "Todos os membros tem acesso": [
-                    "Não, todos os membros tem acesso",
-                ],
-            },
             "order": [
                 "NA",
                 "Existe algum membro que não tem acesso",
@@ -1077,12 +1069,6 @@ def _():
             ],
         },
         "SchoolCurrent": {
-            "map": {
-                "Não": [
-                    "Nao",
-                    "Não sabe",
-                ],
-            },
             "order": [
                 "NA",
                 "Não",
@@ -1090,15 +1076,6 @@ def _():
             ],
         },
         "FoodManytimes": {
-            "map": {
-                "Mais que 3 vezes ao dia": [
-                    "mais que 3 vezes ao dia",
-                ],
-                "1 ou 2 vezes ao dia": [
-                    "1 vez ao dia",
-                    "2 vezes ao dia",
-                ],
-            },
             "order": [
                 "NA",
                 "1 ou 2 vezes ao dia",
@@ -1107,19 +1084,6 @@ def _():
             ],
         },
         "Eletricity": {
-            "map": {
-                "Não": [
-                    "Nao",
-                    "Não sabe",
-                    "Outro",
-                ],
-                "Possui sem padrão próprio": [
-                    "Possui sem padrao proprio",
-                ],
-                "Possui com padrão próprio": [
-                    "Possui com padrao proprio",
-                ],
-            },
             "order": [
                 "NA",
                 "Não",
@@ -1128,23 +1092,6 @@ def _():
             ],
         },
         "Floor": {
-            "map": {
-                "Cerâmica, lajota, pedra, material sustentável e/ou madeira trabalhada": [
-                    "Ceramica Lajota ou Pedra",
-                    "Madeira Trabalhada",
-                    "Material sustentável",
-                ],
-                "Terra batida": [
-                    "Terra Batida",
-                ],
-                "Madeira aproveitada": [
-                    "Madeira Aproveitada",
-                ],
-                "Cimento e/ou contrapiso": [
-                    "Cimento / Contrapiso",
-                    "Outro Material",
-                ],
-            },
             "order": [
                 "NA",
                 "Terra batida",
@@ -1154,14 +1101,6 @@ def _():
             ],
         },
         "CEP": {
-            "map": {
-                "Tenho CEP": [
-                    "Sim, tenho CEP (Código de Endereçamento Postal)",
-                ],
-                "Não tenho CEP": [
-                    "Não, não tenho CEP (Código de Endereçamento Postal)",
-                ],
-            },
             "order": [
                 "NA",
                 "Não tenho CEP",
@@ -1177,17 +1116,6 @@ def _():
             ]
         },
         "DreamsKids": {
-            "map": {
-                "Não": [
-                    "(espontâneo) Não sei",
-                    "Nao Sei",
-                    "Nao",
-                ],
-                "Sim": [
-                    "Sim, o que?",
-                    "Sim o que?",
-                ],
-            },
             "order": [
                 "NA",
                 "Não",
@@ -1214,7 +1142,6 @@ def _():
             ]
         },
         "Satisfaction": {
-            "map": {},
             "order": [
                 "NA",
                 "Muito insatisfeito",
@@ -1225,24 +1152,6 @@ def _():
             ],
         },
         "Water": {
-            "map": {
-                "Encanada de poço ou nascente": [
-                    "Encanada de Poco / Nascente",
-                    "Cisterna",
-                ],
-                "Busco com balde": [
-                    "Busco com Balde",
-                ],
-                "Carro-pipa": [
-                    "Carro Pipa",
-                ],
-                "Encanada fora da rede oficial": [
-                    "Encanada Clandestina",
-                ],
-                "Encanada da rede pública": [
-                    "Rede Publica",
-                ],
-            },
             "order": [
                 "NA",
                 "Outro",
@@ -1254,23 +1163,6 @@ def _():
             ],
         },
         "Walls": {
-            "map": {
-                "Outro": [
-                    "Não sabe",
-                ],
-                "Madeira aproveitada": [
-                    "Madeira Aproveitada",
-                ],
-                "Taipa ou alvenaria sem revestimento": [
-                    "Alvenaria / Tijolo SemRevestimento",
-                    "Taipa",
-                    "Taipa/Alvenaria e Tijolo Sem Revestimento",
-                ],
-                "Materiais adequados": [
-                    "Paineis estruturados",
-                    "Alvenaria / Tijolo Com Revestimento",
-                ],
-            },
             "order": [
                 "NA",
                 "Outro",
@@ -1282,17 +1174,6 @@ def _():
             ],
         },
         "BankAccount": {
-            "map": {
-                "Sim": [
-                    "Sim",
-                    "Sim em meu nome",
-                ],
-                "Não": [
-                    "Nao",
-                    "Nao sei",
-                    "Nao Sei",
-                ],
-            },
             "order": [
                 "NA",
                 "Não",
@@ -1301,7 +1182,6 @@ def _():
             ],
         },
         "CulturalEvent": {
-            "map": {},
             "order": [
                 "NA",
                 "Nunca",
@@ -1311,11 +1191,6 @@ def _():
             ],
         },
         "SchoolLiteracy": {
-            "map": {
-                "Não sei ler": [
-                    "Não sei informar",
-                ],
-            },
             "order": [
                 "NA",
                 "Não sei ler",
@@ -1325,24 +1200,6 @@ def _():
             ],
         },
         "IncomeWorkS3": {
-            "map": {
-                "Trabalho informal": [
-                    "Trabalho Informal",
-                ],
-                "Autônomo": [
-                    "Autonomo",
-                ],
-                "Não estou trabalhando": [
-                    "Eu não estou trabalhando",
-                    "Não sei",
-                ],
-                "CLT, servidor público, estágio ou jovem aprendiz": [
-                    "CLT",
-                    "Funcionário Público Concursado",
-                    "Servidor público",
-                    "Estágio/jovem aprendiz",
-                ],
-            },
             "order": [
                 "NA",
                 "Não estou trabalhando",
@@ -1353,28 +1210,6 @@ def _():
             ],
         },
         "WhyNotWork": {
-            "map": {
-                "Estou aposentado": [
-                    "Estou aposentado/a",
-                ],
-                "Estou cuidando de alguém da família ou não tenho com quem deixar meus filhos": [
-                    "Está cuidando de alguém da família e por isso não consigue trabalhar",
-                    "Não tenho com quem deixar meus filhos",
-                ],
-                "Estou com um problema de saúde": [
-                    "Estou com um problema de saúde que me impossibilita/dificulta trabalhar"
-                ],
-                "Sou dona de casa": [
-                    "Sou dona/o de casa",
-                ],
-                "Estou buscando trabalho mas não encontro": [
-                    "Estou buscando emprego e trabalho ativamente mas não encontro"
-                ],
-                "Outro": [
-                    "Não sei",
-                    "Outro. O que?",
-                ],
-            },
             "order": [
                 "NA",
                 "Outro",
@@ -1388,21 +1223,6 @@ def _():
             ],
         },
         "SchoolLast": {
-            "map": {
-                "Nunca estudei": [
-                    "Não sei",
-                ],
-                "EJA": [
-                    "Alfabetização para adultos",
-                    "Alfabetização para adutlos",
-                    "Educação de Jovens e Adultos",
-                    "EJA",
-                ],
-                "Técnico profissionalizante": [
-                    "Técnico/profissionalizante",
-                    "Técnico / Profissionalizante",
-                ],
-            },
             "order": [
                 "NA",
                 "Nunca estudei",
@@ -1415,21 +1235,6 @@ def _():
             ],
         },
         "Sewer": {
-            "map": {
-                "Outro": [
-                    "Não sabe",
-                ],
-                "Céu aberto": [
-                    "Ceu Aberto",
-                ],
-                "Ligado à rede não oficial": [
-                    "Ligado Rede Não Oficial",
-                    "Ligado Rede Nao Oficial",
-                ],
-                "Ligado à rede oficial": [
-                    "Ligado Rede Oficial",
-                ],
-            },
             "order": [
                 "NA",
                 "Outro",
@@ -1441,11 +1246,6 @@ def _():
             ],
         },
         "SchoolMathLit": {
-            "map": {
-                "Não sei fazer contas matemáticas": [
-                    "Não sei informar",
-                ],
-            },
             "order": [
                 "NA",
                 "Não sei fazer contas matemáticas",
@@ -1455,11 +1255,6 @@ def _():
             ],
         },
         "WaterFrequency": {
-            "map": {
-                "Não tenho": [
-                    "Nao Tenho",
-                ],
-            },
             "order": [
                 "NA",
                 "Não tenho",
@@ -1470,20 +1265,6 @@ def _():
             ],
         },
         "Bathroom": {
-            "map": {
-                "Não tem": [
-                    "Nao Tem",
-                ],
-                "Um banheiro compartilhado": [
-                    "Um Banheiro Compartilhado",
-                ],
-                "Um banheiro exclusivo da família": [
-                    "Um Banheiro Exclusivo",
-                ],
-                "Mais de um banheiro exclusivo da família": [
-                    "Mais de um Banheiro Exclusivo"
-                ],
-            },
             "order": [
                 "NA",
                 "Outro",
@@ -1494,26 +1275,6 @@ def _():
             ],
         },
         "Roof": {
-            "map": {
-                "Materiais adequados": [
-                    "Telhas de Fibrocimento Com Manta",
-                    "Telha Metalica",
-                    "Laje",
-                    "Lajes com Impermeabilizacao",
-                    "Painéis estruturados",
-                    "Telha de Barro  / Ceramica",
-                ],
-                "Telhas sem manta": [
-                    "Telhas de Fibrocimento Sem Manta",
-                ],
-                "Outro material": [
-                    "Outro Material",
-                    "Não sabe",
-                ],
-                "Madeira aproveitada": [
-                    "Madeira Aproveitada",
-                ],
-            },
             "order": [
                 "NA",
                 "Outro material",
@@ -1524,48 +1285,24 @@ def _():
                 "Materiais adequados",
             ],
         },
-        "Documents": [
-            {
-                "map": {
-                    "Registro Nacional de Estrangeiro (RNE)": [
-                        "Permisso de entrada, Autorização de residência, Protocolo de situação de Refugio, RNE, RME, Refugiado",
-                        "RNE",
-                    ],
-                    "Registro indígena": [
-                        "Registro Administrativo de Nascimento Indígena",
-                        "Registro indígena",
-                    ],
-                    "RG": [
-                        "Carteira de Identidade",
-                        "RG",
-                    ],
-                    "Cartão SUS": ["Cartão SUS", "SUS"],
-                    "Certidão de nascimento": ["Certidão de Nascimento"],
-                    "Não tenho nenhum documento": [
-                        "Nenhuma opção",  # Respostas do tipo "NA;NA;NA;...;NA;NA;NA"
-                    ],
-                },
-                "filter_by_order": True,  # [TODO] Ainda não é usado
-                "order": [
-                    # "0", # 13 respostas (só tempo incial)
-                    # "1", # 45 respostas (só tempo incial)
-                    "Não tenho nenhum documento",
-                    "CPF",
-                    "Carteira de trabalho",
-                    "Certidão de nascimento",
-                    "Certidão de casamento",
-                    "Cartão SUS",
-                    "RG",
-                    "Certificado de reservista",
-                    "NIS/NIT",
-                    "Título de eleitor",
-                    "Registro indígena",
-                    "Registro Nacional de Estrangeiro (RNE)",
-                ],
-            }
-        ],
+        "Documents": {
+            "order": [
+                "NA",
+                "Não tenho nenhum documento",
+                "CPF",
+                "Carteira de trabalho",
+                "Certidão de nascimento",
+                "Certidão de casamento",
+                "Cartão SUS",
+                "RG",
+                "Certificado de reservista",
+                "NIS/NIT",
+                "Título de eleitor",
+                "Registro indígena",
+                "Registro Nacional de Estrangeiro (RNE)",
+            ],
+        },
         "HealthGenKidsNames": {
-            "map": {"Diarréia crônica": ["Diarréia Crônica"]},
             "order": [
                 "NA",
                 "Problemas de saúde bucal",
@@ -1576,7 +1313,6 @@ def _():
             ],
         },
         "HealthGenNames": {
-            "map": {"Diarréia crônica": ["Diarréia Crônica"]},
             "order": [
                 "NA",
                 "Problemas de saúde bucal",
@@ -1586,69 +1322,19 @@ def _():
                 "Desnutrição",
             ],
         },
-        "Internet": [
-            {
-                "subtitle": "Todas as respostas",
-                "map": {
-                    "Não tenho acesso à internet": [
-                        "Nenhuma opção",  # Respostas do tipo "NA;NA;NA;...;NA;NA;NA"
-                    ]
-                },
-                "order": [
-                    "Não tenho acesso à internet",
-                    "Para acessar banco e serviços financeiros",
-                    "Para acessar serviços públicos (poupa tempo, gov.br, INSS, etc...)",
-                    "Para comprar coisas",
-                    "Para estudar",
-                    "Para falar com amigos e família",
-                    "Para passar o tempo (redes sociais, jogos, ouvir música, ver filme...)",
-                    "Para trabalhar",
-                ],
-            },
-        ],
+        "Internet": {
+            "order": [
+                "Não tenho acesso à internet",
+                "Para acessar banco e serviços financeiros",
+                "Para acessar serviços públicos (poupa tempo, gov.br, INSS, etc...)",
+                "Para comprar coisas",
+                "Para estudar",
+                "Para falar com amigos e família",
+                "Para passar o tempo (redes sociais, jogos, ouvir música, ver filme...)",
+                "Para trabalhar",
+            ],
+        },
         "CommFacilities": {
-            "map": {
-                "Iluminação pública": [
-                    "Iluminacao Publica",
-                    "Iluminação Pública",
-                ],
-                "Hospital público": [
-                    "Hospital Publico",
-                    "Hospital Público",
-                ],
-                "Creche ou escola pública": [
-                    "Coleta de Lixo",
-                    "Creche Publica",
-                    "Creche Pública",
-                    "Escola Publica",
-                    "Escola Pública",
-                ],
-                "Opções de lazer": [
-                    "Opcoes de Lazer",
-                    "Opções de lazer",
-                ],
-                "Transporte Público": [
-                    "Transporte Publico",
-                    "Transporte Público",
-                ],
-                "Esgoto e água encanada": [
-                    "Acesso à rede de esgoto",
-                    "Agua Encanada",
-                    "Esgoto",
-                    "Água encanada",
-                ],
-                "Espaços comunitários": [
-                    "Espaços para reuniões comunitárias",
-                ],
-                "Ruas e vielas": [
-                    "Boas condições das ruas, vielas ou escadas que dão acesso à comunidade",
-                    "Pavimentação das ruas e vielas da comunidade",
-                ],
-                "Posto de Saúde": [
-                    "Posto de Saude",
-                    "Posto de Saúde",
-                ],
-            },
             "order": [
                 "Nenhuma opção",
                 "Não sabe",
@@ -1664,29 +1350,6 @@ def _():
             ],
         },
         "BathroomQualit": {
-            "map": {
-                "Nenhuma opção": [
-                    "Nenhuma opção",
-                    "0",
-                ],
-                "Parede de azulejo": [
-                    "Azulejo até a metade do banheiro",
-                    "Azulejo todo ruim",
-                ],
-                "Outros": [
-                    "A casa não possui chuveiro",
-                    "Está em obra",
-                    "Não tem chuveiro",
-                    "Banheiro de madeira",
-                    "Em obra",
-                    "ardosia piso",
-                    "Outro",
-                    "a privada não havia tampa. Moradores que tiveram a iniciativa e compraram, mas a imobiliária já ressarciu eles.",
-                    "Só a metade da parede.",
-                    "Piso e parede de cimento",
-                    "Tem pia.",
-                ],
-            },
             "order": [
                 "Nenhuma opção",
                 "Privada sem tampa",
@@ -1701,60 +1364,6 @@ def _():
             ],
         },
         "HousingProblems": {
-            "map": {
-                "Infiltração, alagamento, inundação, umidade, chuva, goteiras e mofo": [
-                    "Infiltração",
-                    "Infiltração e humildade",
-                    "Chuva Goteiras",
-                    "Goteira",
-                    "Umidade Mofo",
-                    "Alagamento Inundacao",
-                ],
-                "Deslizamento, desmoronamento, solapamento ou casa caindo": [
-                    "Deslizamento",
-                    "Desmoronamento",
-                    "Solapamento",
-                    "Casa caindo",
-                ],
-                "Nenhum problema": [
-                    "Minha casa não tem nenhum problema",
-                    "Nenhum risco",
-                    "Não",
-                    "Nenhuma opção",  # Respostas do tipo "NA;NA;NA;...;NA;NA;NA"
-                ],
-                "Animais indesejados": [
-                    "Escorpião, Embuá",
-                    "Ratos Baratas Animais Indesejados",
-                    "Gambá",
-                    "Mosquito",
-                ],
-                # "Rachaduras e vazamentos": [
-                # ],
-                # "Saneamento básico": [
-                # ],
-                "Risco de incêndio": [
-                    "Incendio",
-                ],
-                "Outros": [
-                    "1",  # ???
-                    "A escada de entrada.",
-                    "Cozinha Com Lenha",
-                    "Tiroteio",
-                    "Espaço pequeno",
-                    "Poste de iluminação pública com risco de cair",
-                    "Espaço pequeno",
-                    "Outro",
-                    #
-                    "Esgoto entupido",
-                    "Falta de água constante",
-                    "Saneamento básico",
-                    #
-                    "Banheiro com vazamento",
-                    "Vazamentos hidráulicos",
-                    "Rachadura",
-                    "rachaduras",
-                ],
-            },
             "order": [
                 "Outros",
                 "Deslizamento, desmoronamento, solapamento ou casa caindo",
@@ -1766,44 +1375,8 @@ def _():
             ],
         },
         "Garbage": {
-            # "map": {
-            #     "Joga na rua, vala ou quintal": [
-            #         "Joga na rua / vala quintal",
-            #         "Joga na rua/vala/quintal",
-            #     ],
-            #     "Queimado ou enterrado": [
-            #         "Queimado / Enterrado",
-            #         "Queimado/enterrado",
-            #     ],
-            #     "Recolhido pela prefeitura": [
-            #         "Recolhido pela Prefeitura",
-            #     ],
-            #     "Lixeira": [
-            #         "Cacamba",
-            #         "Caçamba mais proxima",
-            #         "Contêiner",
-            #         "Contenier",
-            #         "Leva a lixeira lá em baixo.",
-            #         "Leva até a lixeira",
-            #         "Leva até a lixeira.",
-            #         "Leva na lixeira",
-            #         "Leva na lixeira.",
-            #         "Leva para a lixeira",
-            #         "Leva para a lixeira.",
-            #         "Leva pra lixeira",
-            #         "Levam na lixeira.",
-            #         "Levo até lixeira.",
-            #         "Lixeira",
-            #         "contenier",
-            #     ],
-            #     "Coleta seletiva": [
-            #         "Coleta Seletiva",
-            #     ],
-            #     "Outro": [
-            #         "Nenhuma opção",  # Respostas do tipo "NA;NA;NA;...;NA;NA;NA"
-            #     ],
-            # },
             "order": [
+                "NA",
                 "Outro",
                 "Queimado ou enterrado",
                 "É jogado no rio ou córrego",
@@ -1918,18 +1491,16 @@ def _(ASSERTION_MAP, MULTIPLE_ASSERTION_QUESTIONS, pl, px, question_name_dict):
             answers = pl.Series(df_plot.select("answer").unique()).to_list()
             answer_order_dict = {val: i for i, val in enumerate(answer_order)}
             answer_order = sorted(
-                answers, key=lambda x: answer_order_dict.get(x, float("inf"))
+                answers,
+                # Força NA como primeira opção, e de resto segue a ordem do ASSERTION_MAP
+                key=lambda x: (-1 if x == "NA" else answer_order_dict.get(x, float("inf")))
             )
 
             df_pct = df_plot.with_columns(
-                percentage=(
-                    pl.col("len") / pl.col("len").sum().over("time") * 100
-                )
+                percentage=(pl.col("len") / pl.col("len").sum().over("time") * 100)
             )
 
-            df_pct_wo_na = df_plot.filter(
-                pl.col("answer") != "NA"
-            ).with_columns(
+            df_pct_wo_na = df_plot.filter(pl.col("answer") != "NA").with_columns(
                 percentage_wo_na=(
                     pl.col("len") / pl.col("len").sum().over("time") * 100
                 )
@@ -1940,9 +1511,7 @@ def _(ASSERTION_MAP, MULTIPLE_ASSERTION_QUESTIONS, pl, px, question_name_dict):
                     df_pct_wo_na, on=agg_cols, how="left", suffix="_wo_na"
                 )
                 .with_columns(
-                    percentage_wo_na=pl.when(
-                        pl.col("percentage_wo_na").is_null()
-                    )
+                    percentage_wo_na=pl.when(pl.col("percentage_wo_na").is_null())
                     .then(pl.lit("NÃO INCLUÍDO"))
                     .otherwise(pl.col("percentage_wo_na"))
                 )
@@ -1975,12 +1544,8 @@ def _(ASSERTION_MAP, MULTIPLE_ASSERTION_QUESTIONS, pl, px, question_name_dict):
                 kwargs["facet_row"] = compare_by_col
 
             if max_y is not None:
-                kwargs["range_y"] = (
-                    [0, max_y] if orientation == "v" else [0, None]
-                )
-                kwargs["range_x"] = (
-                    [0, max_y] if orientation == "h" else [0, None]
-                )
+                kwargs["range_y"] = [0, max_y] if orientation == "v" else [0, None]
+                kwargs["range_x"] = [0, max_y] if orientation == "h" else [0, None]
 
             fig = px.bar(
                 df_plot,
@@ -1989,9 +1554,7 @@ def _(ASSERTION_MAP, MULTIPLE_ASSERTION_QUESTIONS, pl, px, question_name_dict):
                 # height=1000,
                 color_discrete_sequence=palette,  # [NOTE] Ver https://plotly.com/python/discrete-color/
                 barmode="group",
-                title=title
-                if title
-                else question_name_dict.get(question_name),
+                title=title if title else question_name_dict.get(question_name),
                 subtitle=f"[{question_name}] " + subtitle,
                 hover_data=hover_dict,
                 hover_name="answer",
@@ -2014,7 +1577,7 @@ def _(ASSERTION_MAP, MULTIPLE_ASSERTION_QUESTIONS, pl, px, question_name_dict):
                 },
             )
             fig.update_layout(margin=dict(t=100, l=100, r=100, b=100))
-        
+
         return fig
 
 
