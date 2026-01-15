@@ -259,6 +259,9 @@ def _(question_name_dict):
             .drop("value")
         )
         # Create the GreatTable
+
+
+    
         gt_table = (
             GT(_df)
             .cols_move_to_start(columns=["question_id", "question"])
@@ -912,7 +915,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(GT, df_plot_variables, pl):
+def _(GT, df_plot_variables, loc, pl, style):
     # 4 = Renda obtida exclusivamente do trabalho
     # 5 = Renda obtida de programas sociais e governamentais
     # 6 = Renda obtida de pensão alimentícia
@@ -996,9 +999,12 @@ def _(GT, df_plot_variables, pl):
         )
         .select([
             "Fonte_de_Renda",
-            # "type",
-            pl.col("^.*FIRST.*$"),  # Colunas do tempo inicial
-            pl.col("^.*LAST.*$"),   # Colunas do tempo final
+            pl.col("N_familias_FIRST").cast(pl.Utf8),
+            "Renda_total_FIRST",
+            "pct_renda_FIRST",
+            pl.col("N_familias_LAST").cast(pl.Utf8),
+            "Renda_total_LAST",
+            "pct_renda_LAST"
         ])
         .sort("Renda_total_FIRST", descending=True)
     
@@ -1015,8 +1021,21 @@ def _(GT, df_plot_variables, pl):
         "pct_renda_LAST": "% da renda geral"
     }
 
+    _df_with_total = pl.concat([
+        _df,
+        pl.DataFrame({
+            "Fonte_de_Renda": ["TOTAL"],
+            "N_familias_FIRST": ["-"],  # deixa vazio
+            "Renda_total_FIRST": [_df["Renda_total_FIRST"].sum()],
+            "pct_renda_FIRST": [100.0],
+            "N_familias_LAST": ["-"],  # deixa vazio
+            "Renda_total_LAST": [_df["Renda_total_LAST"].sum()],
+            "pct_renda_LAST": [100.0]
+        }, schema=_df.schema, strict=False)
+    ])
+
     gt_table = (
-        GT(_df)
+        GT(_df_with_total)
         .tab_header(
             title="Composição da Renda Familiar por Fonte nos Períodos Inicial e Final",
             subtitle="Distribuição de fontes de renda e valores totais"
@@ -1041,23 +1060,28 @@ def _(GT, df_plot_variables, pl):
             decimals=1,
             pattern="{x}%"
         )
-        .cols_align(
-            align="left",
-            columns="Fonte_de_Renda"
+        .tab_style(
+            style=style.text(weight="bold"),
+            locations=loc.body(columns=["pct_renda_FIRST", "pct_renda_LAST"])
         )
-        .cols_align(
-            align="center",
-            columns=["N_familias_FIRST", "N_familias_LAST"]
+        .tab_style(
+            style=style.text(align="right"),
+            locations=loc.body(columns=["N_familias_FIRST", "Renda_total_FIRST", "pct_renda_FIRST",
+                                         "N_familias_LAST", "Renda_total_LAST", "pct_renda_LAST"])
         )
-        .cols_align(
-            align="right",
-            columns=["Renda_total_FIRST", "Renda_total_LAST", "pct_renda_FIRST", "pct_renda_LAST"]
+        .tab_style(
+            style=style.text(align="left"),
+            locations=loc.body(columns=["Fonte_de_Renda"])
         )
-        .tab_options(
-            table_font_size="14px",
-            heading_title_font_size="18px",
-            heading_subtitle_font_size="14px"
+        .tab_style(
+            style=style.text(weight="bold", size="large"),
+            locations=loc.column_labels()
         )
+        .tab_style(
+            style=style.text(weight="bold"),
+            locations=loc.body(rows=pl.col("Fonte_de_Renda") == "TOTAL")
+        )
+        .opt_stylize(style=1, color="blue")
     )
 
     gt_table
