@@ -906,6 +906,171 @@ def _(get_income_plot, mo):
 
 
 @app.cell
+def _(mo):
+    mo.md(r"""### Análise 6 - Fontes de renda""")
+    return
+
+
+@app.cell(hide_code=True)
+def _(GT, df_plot_variables, pl):
+    # 4 = Renda obtida exclusivamente do trabalho
+    # 5 = Renda obtida de programas sociais e governamentais
+    # 6 = Renda obtida de pensão alimentícia
+    # 7 = Renda obtida por ajuda de familiares
+    # 8 = Renda obtida de investimentos (imóvel alugado, investimentos bancários e etc)
+    # 9 = Outras fontes de renda.
+    # 10 = Auxílio previdenciário
+
+    _income_mapping = {
+        "4": "Trabalho",
+        "5": "Programas sociais e governamentais",
+        "6": "Pensão alimentícia",
+        "7": "Ajuda de familiares",
+        "8": "Investimentos",
+        "9": "Outras fontes",
+        "10": "Auxílio previdenciário"
+    }
+
+    _df = (
+        df_plot_variables.filter(
+            (pl.col.question == "IncomeDesc")
+        )
+        .filter(pl.col.answer.str.tail(2) != "NA")
+        .with_columns(
+            type=pl.col.answer.str.extract(r"IncomeDesc_(\d+)", 1),
+            value=pl.col.answer.str.extract(r"=(\d+\.?\d*)", 1).cast(pl.Float32),
+            question_code=pl.col.answer.str.extract(r"R_([^_]+)_", 1), # DC, DI, ATI
+        )
+        # Corrige typos específicos do salário mínimo da época
+        .with_columns(
+            value=pl.when(pl.col.value==2.215).then(pl.lit(2215)).when(pl.col.value==1.212).then(pl.lit(1212)).otherwise(pl.col.value)
+        )
+        # Remove outliers
+        .filter(
+            (pl.col.value < 10_000) & (pl.col.value >= 100)
+        )
+        # Define prioridade: DC para FIRST, ATI para LAST
+        .with_columns(
+            priority=pl.when(
+                (pl.col.time == "FIRST") & (pl.col.question_code == "DC")
+            ).then(1)
+            .when(
+                (pl.col.time == "LAST") & (pl.col.question_code == "ATI")
+            ).then(1)
+            .otherwise(2)
+        )
+        # Ordena por prioridade e pega o primeiro registro
+        .sort("priority")
+        .group_by("id_family_datalake", "time", "type")
+        .first()
+        .select(
+            "id_family_datalake",
+            "question_code",
+            "answer",
+            "type",
+            "value",
+            "time",
+        )
+        # Agrega por tempo e fonte de renda para formar massa de dados
+        .group_by("time", "type").agg([
+            pl.len().alias("N_familias"),
+            pl.sum("value").alias("Renda_total")
+        ])
+        # Calcula o total por tempo
+        .with_columns(
+            total_por_tempo=pl.sum("Renda_total").over("time")
+        )
+        # Calcula percentual
+        .with_columns(
+            pct_renda=(pl.col("Renda_total") / pl.col("total_por_tempo") * 100).round(1)
+        )
+        # Pivota para formato wide
+        .pivot(
+            index="type",
+            on="time",
+            values=["N_familias", "Renda_total", "pct_renda"]
+        )
+        # Adiciona nome da fonte de renda
+        .with_columns(
+            Fonte_de_Renda=pl.col("type").replace(_income_mapping)
+        )
+        .select([
+            "Fonte_de_Renda",
+            # "type",
+            pl.col("^.*FIRST.*$"),  # Colunas do tempo inicial
+            pl.col("^.*LAST.*$"),   # Colunas do tempo final
+        ])
+        .sort("Renda_total_FIRST", descending=True)
+    
+    )
+
+    # Mapeamento de nomes das colunas para português
+    _column_labels = {
+        "Fonte_de_Renda": "Fonte de Renda",
+        "N_familias_FIRST": "N famílias",
+        "Renda_total_FIRST": "Renda total (R$)",
+        "pct_renda_FIRST": "% da renda geral",
+        "N_familias_LAST": "N famílias",
+        "Renda_total_LAST": "Renda total (R$)",
+        "pct_renda_LAST": "% da renda geral"
+    }
+
+    gt_table = (
+        GT(_df)
+        .tab_header(
+            title="Composição da Renda Familiar por Fonte nos Períodos Inicial e Final",
+            subtitle="Distribuição de fontes de renda e valores totais"
+        )
+        .tab_spanner(
+            label="Tempo Inicial",
+            columns=["N_familias_FIRST", "Renda_total_FIRST", "pct_renda_FIRST"]
+        )
+        .tab_spanner(
+            label="Tempo Final",
+            columns=["N_familias_LAST", "Renda_total_LAST", "pct_renda_LAST"]
+        )
+        .cols_label(**_column_labels)
+        .fmt_number(
+            columns=["Renda_total_FIRST", "Renda_total_LAST"],
+            decimals=0,
+            sep_mark=".",
+            dec_mark=","
+        )
+        .fmt_number(
+            columns=["pct_renda_FIRST", "pct_renda_LAST"],
+            decimals=1,
+            pattern="{x}%"
+        )
+        .cols_align(
+            align="left",
+            columns="Fonte_de_Renda"
+        )
+        .cols_align(
+            align="center",
+            columns=["N_familias_FIRST", "N_familias_LAST"]
+        )
+        .cols_align(
+            align="right",
+            columns=["Renda_total_FIRST", "Renda_total_LAST", "pct_renda_FIRST", "pct_renda_LAST"]
+        )
+        .tab_options(
+            table_font_size="14px",
+            heading_title_font_size="18px",
+            heading_subtitle_font_size="14px"
+        )
+    )
+
+    gt_table
+    return
+
+
+@app.cell
+def _():
+    # CÓDIGO BASE
+    return
+
+
+@app.cell
 def _(mo, pl):
     # Dataframe em formato long (uma row por família/resposta, ao invés de uma row por família)
     df_long = pl.read_csv(str(mo.notebook_location() / "public" / "base_long.csv"))
