@@ -15,7 +15,7 @@ def _(mo):
     mo.md(
         r"""
     ## Estrutura
-    Olá. 
+    Olá.
 
     Nessa página, estão os dados quantitativos da pesquisa de mestrado que foram produzidos e organizados pela Carolina Jansen e pelo Caio Lang.
 
@@ -261,7 +261,7 @@ def _(question_name_dict):
         # Create the GreatTable
 
 
-    
+
         gt_table = (
             GT(_df)
             .cols_move_to_start(columns=["question_id", "question"])
@@ -344,7 +344,7 @@ def _(mo):
 
     ### Análise 1 - Mobilidade entre categorias do IGF
 
-    O **Índice Gerando Falcões (IGF)** é uma ferramenta para medir pobreza e dignidade de famílias e territórios de forma multidimensional. A régua do IGF, das categorias de maior pobreza e vulnerabilidade à melhor categoria, vai de extrema pobreza 1 (`E1`), extrema pobreza 2 (`E2`), pobreza 1 (`P1`), pobreza 2 (`P2`) e dignidade (`D`). 
+    O **Índice Gerando Falcões (IGF)** é uma ferramenta para medir pobreza e dignidade de famílias e territórios de forma multidimensional. A régua do IGF, das categorias de maior pobreza e vulnerabilidade à melhor categoria, vai de extrema pobreza 1 (`E1`), extrema pobreza 2 (`E2`), pobreza 1 (`P1`), pobreza 2 (`P2`) e dignidade (`D`).
 
     `E1` e `E2` representam situações em que a família vive **risco diverso e crônico**, `P1` e `P2` são situações de **pobreza**, com **menor risco mas indignas** e `D` são famílias com o **mínimo existencial**, que permite uma vida **sem riscos iminentes**.
     """
@@ -1007,7 +1007,7 @@ def _(GT, df_plot_variables, loc, pl, style):
             "pct_renda_LAST"
         ])
         .sort("Renda_total_FIRST", descending=True)
-    
+
     )
 
     # Mapeamento de nomes das colunas para português
@@ -1581,17 +1581,29 @@ def _():
 
 @app.cell
 def _():
-    import random
-
     import marimo as mo
+
+    return mo
+
+@app.cell
+def _():
+    import micropip
+
+    return micropip
+
+
+@app.cell
+def _():
+    await micropip.install("great_tables")
+    await micropip.install("plotly")
+    
     import altair as alt
     from great_tables import GT, md, style, loc
     import polars as pl
     import plotly.express as px
     import plotly.graph_objects as go
-    from rich import print
     import numpy as np
-    return GT, go, loc, md, mo, pl, px, style
+    return GT, go, loc, md, pl, px, style
 
 
 @app.cell
