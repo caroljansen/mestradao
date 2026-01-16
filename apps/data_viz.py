@@ -1582,22 +1582,21 @@ def _():
 @app.cell
 def _():
     import marimo as mo
+    return (mo,)
 
-    return mo
 
 @app.cell
 def _():
     import micropip
-
-    return micropip
+    return (micropip,)
 
 
 @app.cell
-def _():
+async def _(micropip):
     await micropip.install("great_tables")
     await micropip.install("plotly")
-    
-    import altair as alt
+    await micropip.install("polars")
+
     from great_tables import GT, md, style, loc
     import polars as pl
     import plotly.express as px
